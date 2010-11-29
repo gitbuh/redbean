@@ -52,7 +52,7 @@ class RedBean_QueryWriter_SQLite extends RedBean_AQueryWriter implements RedBean
 	 * @param string $table
 	 * @return array $columns
 	 */
-	public function getColumns( $table ) {
+	public function getColumnsReal( $table ) {
 		$table = $this->safeTable($table, true);
 		$columnsRaw = $this->adapter->get("PRAGMA table_info('$table')");
 		$columns = array();

@@ -84,9 +84,6 @@ class RedBean_QueryWriter_MySQL extends RedBean_AQueryWriter implements RedBean_
 	 */
 	const C_DATATYPE_SPECIFIED = 99;
 
-
-
-
 	/**
 	 * @var array
 	 * Supported Column Types
@@ -123,6 +120,7 @@ class RedBean_QueryWriter_MySQL extends RedBean_AQueryWriter implements RedBean_
 	 */
   protected $quoteCharacter = '`';
 
+
 	/**
 	 * Constructor.
 	 * The Query Writer Constructor also sets up the database.
@@ -130,14 +128,15 @@ class RedBean_QueryWriter_MySQL extends RedBean_AQueryWriter implements RedBean_
 	 */
 	public function __construct( RedBean_Adapter $adapter, $frozen = false ) {
 		$this->adapter = $adapter;
+		$this->frozen = $frozen;
 	}
 
 	/**
 	 * Returns all tables in the database.
 	 * @return array $tables
 	 */
-	public function getTables() {
-		return $this->adapter->getCol( "show tables" );
+	protected function getTablesReal () {
+	  return $this->adapter->getCol( "show tables" );
 	}
 
 	/**
@@ -161,7 +160,7 @@ class RedBean_QueryWriter_MySQL extends RedBean_AQueryWriter implements RedBean_
 	 * @param string $table
 	 * @return array $columns
 	 */
-	public function getColumns( $table ) {
+	public function getColumnsReal( $table ) {
 		$table = $this->safeTable($table);
 		$columnsRaw = $this->adapter->get("DESCRIBE $table");
 		foreach($columnsRaw as $r) {

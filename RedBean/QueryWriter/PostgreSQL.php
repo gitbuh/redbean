@@ -84,7 +84,7 @@ class RedBean_QueryWriter_PostgreSQL extends RedBean_AQueryWriter implements Red
 	 * Returns all tables in the database
 	 * @return array $tables
 	 */
-	public function getTables() {
+	public function getTablesReal() {
 		return $this->adapter->getCol( "select table_name from information_schema.tables
 where table_schema = 'public'" );
 	}
@@ -105,7 +105,7 @@ where table_schema = 'public'" );
 	 * @param string $table
 	 * @return array $columns
 	 */
-	public function getColumns( $table ) {
+	public function getColumnsReal( $table ) {
 		$table = $this->safeTable($table, true);
 		$columnsRaw = $this->adapter->get("select column_name, data_type from information_schema.columns where table_name='$table'");
 		foreach($columnsRaw as $r) {

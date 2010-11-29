@@ -1,3 +1,4 @@
+#!/usr/bin/php
 <?php
 
 //
@@ -224,8 +225,8 @@ try {
 }catch(RedBean_Exception_Security $e) {
 	pass();
 }
-//Objects should not be allowed.
-/*
+
+// Objects should not be allowed without legit metadata
 $bean->name = new RedBean_OODBBean;
 try {
 	$redbean->store($bean);
@@ -239,8 +240,7 @@ try {
 }catch(RedBean_Exception_Security $e) {
 	pass();
 }
-*/
-// yeah they should. ;)
+
 
 //Property names should be alphanumeric
 $prop = ".";
@@ -505,6 +505,8 @@ $pdo->Execute("CREATE TABLE IF NOT EXISTS`hack` (
 `id` INT( 11 ) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY
 ) ENGINE = MYISAM ;
 ");
+
+/*
 $pdo->Execute("DROP TABLE IF EXISTS page");
 $pdo->Execute("DROP TABLE IF EXISTS user");
 $pdo->Execute("DROP TABLE IF EXISTS movie");
@@ -532,14 +534,15 @@ $pdo->Execute("DROP TABLE IF EXISTS dummy");
 $pdo->Execute("DROP TABLE IF EXISTS human");
 $pdo->Execute("DROP TABLE IF EXISTS animal");
 $pdo->Execute("DROP TABLE IF EXISTS somebean");
+*/
 
+// Bean-Type Properties
 
 testpack("Are Bean-Type Properties Causing Weird Side Effects?");
 
 $b = $redbean->dispense("somebean");
 $redbean->store($b);
 asrt($b->hmm, null);
-
 
 testpack("Set Bean-Type Property");
 
@@ -574,6 +577,7 @@ testpack("Unlink Bean-Type Property");
 
 $cat->master = null;
 $m = $cat->master;
+
 asrt($m instanceof RedBean_OODBBean, true);
 asrt($m->getMeta("type"), "human");
 asrt($m->id, 0);

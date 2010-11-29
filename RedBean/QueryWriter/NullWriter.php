@@ -268,13 +268,13 @@ class RedBean_QueryWriter_NullWriter extends RedBean_AQueryWriter implements Red
 	 */
 	public $returnAddUniqueIndex = NULL;
 
-	public function getTables() {
+	public function getTablesReal() {
 		return $this->returnTables;
 	}
 	public function createTable( $table ) {
 		$this->createTableArgument = $table;
 	}
-	public function getColumns( $table ) {
+	public function getColumnsReal( $table ) {
 		$this->getColumnsArgument = $table;
 		return $this->returnGetColumns;
 	}

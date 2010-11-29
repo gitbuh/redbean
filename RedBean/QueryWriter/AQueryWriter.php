@@ -23,6 +23,11 @@ abstract class RedBean_AQueryWriter {
   
   
 	/**
+	 * @var bool is schema frozen?
+	 */
+  public $frozen = false;
+  
+	/**
 	 * @var array
 	 * Supported Column Types
 	 */
@@ -52,6 +57,7 @@ abstract class RedBean_AQueryWriter {
 	 */
   protected $quoteCharacter = '';
 	
+  
 	/**
 	 * Get the adapter
 	 * @return RedBean_Adapter_DBAdapter
@@ -111,6 +117,33 @@ abstract class RedBean_AQueryWriter {
 	 */
 	public function setBeanFormatter( RedBean_IBeanFormatter $beanFormatter ) {
 		$this->tableFormatter = $beanFormatter;
+	}
+	
+  protected $gotTables = null;
+  
+	/**
+	 * Returns all tables in the database.
+	 * @return array $tables
+	 */
+	public function getTables () {
+	  if (!$this->frozen) return $this->getTablesReal();
+    if ($this->gotTables) return $this->gotTables;
+    $this->gotTables=$this->getTablesReal();
+	  return $this->gotTables;
+	}
+	
+  protected $gotColumns = array();
+	
+	/**
+	 * Returns an array containing the column names of the specified table.
+	 * @param string $table
+	 * @return array $columns
+	 */
+	public function getColumns( $table ) {
+	  if (!$this->frozen) return $this->getColumnsReal($table);
+    if (array_key_exists($table, $this->gotColumns)) return $this->gotColumns[$table];
+    $this->gotColumns[$table] = $this->getColumnsReal($table);
+	  return $this->gotColumns[$table];
 	}
 	
 	/**

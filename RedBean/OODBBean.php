@@ -143,7 +143,7 @@ class RedBean_OODBBean implements IteratorAggregate {
 		
     // setting a bean-type property
     if ($value instanceof RedBean_OODBBean) {
-      $this->link($property, $value);
+      if (!$this->link($property, $value)) return;
     }
     // unlinking a bean-type property
     elseif ($value === null) {
@@ -171,7 +171,9 @@ class RedBean_OODBBean implements IteratorAggregate {
   }
   
   protected function link ($property, $value) {
+    if (!$value->getMeta("type")) return false;
     $this->getLinker()->link($this, $value, $property);
+    return true;
   }
   
   protected function unlink ($property, $type) {
@@ -179,11 +181,15 @@ class RedBean_OODBBean implements IteratorAggregate {
   }
   
   protected function navigateLink ($property) {
+    $pl=strlen($property);
+	  if (strrpos($property, '_id')===$pl-3) return null;
     $cols = $this->toolbox->getWriter()->getColumns($this->getMeta("type"));
-    foreach ($cols as $col=>$coltype) {
-      @list($name, $type, $id) = explode("_", $col);
-      if ($name != $property || $id != "id") continue;
-      return $this->getLinker()->getBean($this, $type, $property);
+    foreach ($cols as $col=>$sqltype) {
+      $cl=strlen($col);
+      if (strpos($col, $property)===0 && strrpos($col, '_id')===$cl-3) {
+        $type=substr($col, $pl+1, $cl-$pl-4);
+        return $this->getLinker()->getBean($this, $type, $property);
+      }
     }
   }
 
