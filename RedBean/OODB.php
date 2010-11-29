@@ -34,6 +34,12 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 	 * @var boolean
 	 */
 	private $isFrozen = false;
+	
+	/**
+	 *
+	 * @var RedBean_ToolBox
+	 */
+	private $toolbox;
 
 	/**
 	 * The RedBean OODB Class is the main class of RedBean.
@@ -45,6 +51,7 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 	 */
 	public function __construct( RedBean_QueryWriter $writer ) {
 		$this->writer = $writer;
+		$this->toolbox = new RedBean_ToolBox($this, $writer->getAdapter(), $writer);
 	}
 
 	/**
@@ -84,6 +91,7 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 	public function dispense($type ) {
 		$this->signal( "before_dispense", $type );
 		$bean = new RedBean_OODBBean();
+		$bean->setToolbox($this->toolbox);
 		$bean->setMeta("type", $type );
 		$idfield = $this->writer->getIDField($bean->getMeta("type"));
 		$bean->setMeta("sys.idfield",$idfield);
@@ -119,6 +127,7 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 		}
 		//Are the properties and values valid?
 		foreach($bean as $prop=>$value) {
+			if ($value instanceof RedBean_OODBBean) continue; 
 			if (
 			is_array($value) ||
 					  is_object($value) ||
@@ -175,29 +184,28 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 		$insertcolumns = array();
 		$updatevalues = array();
 		foreach( $bean as $p=>$v ) {
-			if ($p!=$idfield) {
-				if (!$this->isFrozen) {
-					//What kind of property are we dealing with?
-					$typeno = $this->writer->scanType($v);
-					//Is this property represented in the table?
-					if (isset($columns[$p])) {
-						//yes it is, does it still fit?
-						$sqlt = $this->writer->code($columns[$p]);
-						if ($typeno > $sqlt) {
-							//no, we have to widen the database column type
-							$this->writer->widenColumn( $table, $p, $typeno );
-						}
-					}
-					else {
-						//no it is not
-						$this->writer->addColumn($table, $p, $typeno);
-					}
-				}
-				//Okay, now we are sure that the property value will fit
-				$insertvalues[] = $v;
-				$insertcolumns[] = $p;
-				$updatevalues[] = array( "property"=>$p, "value"=>$v );
-			}
+			if ($p==$idfield || $v instanceof RedBean_OODBBean) continue; 
+		  if (!$this->isFrozen) {
+			  //What kind of property are we dealing with?
+			  $typeno = $this->writer->scanType($v);
+			  //Is this property represented in the table?
+			  if (isset($columns[$p])) {
+				  //yes it is, does it still fit?
+				  $sqlt = $this->writer->code($columns[$p]);
+				  if ($typeno > $sqlt) {
+					  //no, we have to widen the database column type
+					  $this->writer->widenColumn( $table, $p, $typeno );
+				  }
+			  }
+			  else {
+				  //no it is not
+				  $this->writer->addColumn($table, $p, $typeno);
+			  }
+		  }
+		  //Okay, now we are sure that the property value will fit
+		  $insertvalues[] = $v;
+		  $insertcolumns[] = $p;
+		  $updatevalues[] = array( "property"=>$p, "value"=>$v );
 		}
 		if (!$this->isFrozen && ($uniques = $bean->getMeta("buildcommand.unique"))) {
 			foreach($uniques as $unique) {

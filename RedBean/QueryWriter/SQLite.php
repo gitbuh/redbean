@@ -9,21 +9,12 @@
  * @license			BSD
  */
 class RedBean_QueryWriter_SQLite extends RedBean_AQueryWriter implements RedBean_QueryWriter {
-
-
-	/**
-	 *
-	 * @var RedBean_Adapter_DBAdapter
-	 */
-	protected $adapter;
 	
 	/**
 	 * @var string
 	 * character to escape keyword table/column names
 	 */
   protected $quoteCharacter = '`';
-
-
 
 	/**
 	 * Constructor

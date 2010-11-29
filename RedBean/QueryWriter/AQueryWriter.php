@@ -53,6 +53,14 @@ abstract class RedBean_AQueryWriter {
   protected $quoteCharacter = '';
 	
 	/**
+	 * Get the adapter
+	 * @return RedBean_Adapter_DBAdapter
+	 */
+	public function getAdapter() {
+		return $this->adapter;
+	}
+	
+	/**
 	 * Do everything that needs to be done to format a table name
 	 * @param string $name of table
 	 * @return string table name

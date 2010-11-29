@@ -60,9 +60,8 @@ function testpack($name) {
 	printtext("testing: ".$name);
 }
 
-//INCLUDE YOUR REDBEAN FILE HERE!
-require("rb.php");
-//require("RedBean/redbean.inc.php");
+require_once($ini['global']['script']);
+
 $toolbox = RedBean_Setup::kickstartDev(
   "pgsql:host={$ini['pgsql']['host']} dbname={$ini['pgsql']['schema']}",
   $ini['pgsql']['user'],

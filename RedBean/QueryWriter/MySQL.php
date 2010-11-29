@@ -116,12 +116,6 @@ class RedBean_QueryWriter_MySQL extends RedBean_AQueryWriter implements RedBean_
 			  "text"=>RedBean_QueryWriter_MySQL::C_DATATYPE_TEXT16,
 			  "longtext"=>RedBean_QueryWriter_MySQL::C_DATATYPE_TEXT32
 	);
-
-	/**
-	 *
-	 * @var RedBean_Adapter_DBAdapter
-	 */
-	protected $adapter;
 	
 	/**
 	 * @var string

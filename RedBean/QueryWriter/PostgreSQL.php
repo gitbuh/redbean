@@ -58,12 +58,6 @@ class RedBean_QueryWriter_PostgreSQL extends RedBean_AQueryWriter implements Red
 			  "double precision" => self::C_DATATYPE_DOUBLE,
 			  "text"=>self::C_DATATYPE_TEXT
 	);
-
-	/**
-	 *
-	 * @var RedBean_DBAdapter
-	 */
-	protected $adapter;
 	
 	/**
 	 * @var string

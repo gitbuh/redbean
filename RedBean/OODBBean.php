@@ -22,7 +22,25 @@ class RedBean_OODBBean implements IteratorAggregate {
 	 * @var array
 	 */
 	private $__info = NULL;
+	
+	/**
+	 *
+	 * @var RedBean_ToolBox
+	 */
+	private $toolbox;
 
+	/**
+	 * @var RedBean_LinkManager
+	 */
+  private $linker = null;
+
+	/**
+	 * Constructor
+	 * @param RedBean_ToolBox $tools
+	 */
+	public function setToolbox(RedBean_ToolBox $tools) {
+		$this->toolbox = $tools;
+	}
 
 	public function getIterator() {
 		return new ArrayIterator($this->properties);
@@ -99,10 +117,10 @@ class RedBean_OODBBean implements IteratorAggregate {
 	 * @return mixed $value
 	 */
 	public function __get( $property ) {
-
-
-		if (!isset($this->properties[$property]))  return NULL;
-		return $this->properties[$property];
+		if (isset($this->properties[$property])) { 
+		  return $this->properties[$property];
+	  }
+	  return $this->navigateLink($property);
 	}
 
 	/**
@@ -117,17 +135,42 @@ class RedBean_OODBBean implements IteratorAggregate {
 
 	public function __set( $property, $value ) {
 
-
 		$this->setMeta("tainted",true);
-
-		if ($value===false) {
+		
+    // setting a bean-type property
+    if ($value instanceof RedBean_OODBBean) {
+      $this->link ($property, $value);
+    }
+		elseif ($value===false) {
 			$value = "0";
 		}
-		if ($value===true) {
+		elseif ($value===true) {
 			$value = "1";
 		}
 		$this->properties[$property] = $value;
 	}
+	
+  protected function getLinker () {
+    if (!$this->linker) {
+      $this->linker = new RedBean_LinkManager($this->toolbox);
+    }
+    return $this->linker;
+  }
+  
+  protected function link ($property, $value) {
+    $linker = $this->getLinker();
+    $linker->link($this, $value, $property);
+  }
+  
+  protected function navigateLink ($property) {
+    $cols = $this->toolbox->getWriter()->getColumns($this->getMeta("type"));
+    foreach ($cols as $col=>$coltype) {
+      @list($name, $type, $id) = explode("_", $col);
+      if ($name != $property || $id != "id") continue;
+      return $this->getLinker()->getBean($this, $type, $property);
+    }
+    return null;
+  }
 
 	/**
 	 * Returns the value of a meta property. A meta property

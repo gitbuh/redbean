@@ -72,10 +72,7 @@ function testpack($name) {
 //Test the Setup Class
 testpack("Test Setup");
 
-//INCLUDE YOUR REDBEAN FILE HERE!
-require("rb.php");
-//require("RedBean/redbean.inc.php");
-
+require_once($ini['global']['script']);
 
 if (interface_exists("RedBean_ObjectDatabase")) pass(); else fail();
 
@@ -227,6 +224,7 @@ try {
 	pass();
 }
 //Objects should not be allowed.
+/*
 $bean->name = new RedBean_OODBBean;
 try {
 	$redbean->store($bean);
@@ -240,6 +238,9 @@ try {
 }catch(RedBean_Exception_Security $e) {
 	pass();
 }
+*/
+// yeah they should. ;)
+
 //Property names should be alphanumeric
 $prop = ".";
 $bean->$prop = 1;
@@ -522,6 +523,38 @@ $pdo->Execute("DROP TABLE IF EXISTS cask");
 $pdo->Execute("DROP TABLE IF EXISTS whisky");
 $pdo->Execute("DROP TABLE IF EXISTS __log");
 $pdo->Execute("DROP TABLE IF EXISTS dummy");
+$pdo->Execute("DROP TABLE IF EXISTS human");
+$pdo->Execute("DROP TABLE IF EXISTS animal");
+
+
+
+testpack("Set Property as Bean");
+
+$bob = $redbean->dispense("human");
+$bob->name="billybob";
+$redbean->store($bob);
+
+$a = $redbean->dispense("animal");
+$a->name="rover";
+$a->master=$bob;
+$redbean->store($a);
+asrt($a->master_human_id, 1);
+
+$a = $redbean->dispense("animal");
+$a->name="fuzznugget";
+$a->master=$bob;
+$redbean->store($a);
+asrt($a->master_human_id, 1);
+
+testpack("Get Property as Bean");
+
+$dog = $redbean->load("animal",1);
+$cat = $redbean->load("animal",2);
+asrt($dog->name, "rover");
+asrt($dog->master->name, "billybob");
+asrt($cat->name, "fuzznugget");
+asrt($cat->master->name, "billybob");
+
 
 //Test real events: update,open,delete
 testpack("Test Real Events");
