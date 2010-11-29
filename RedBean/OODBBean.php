@@ -120,7 +120,11 @@ class RedBean_OODBBean implements IteratorAggregate {
 		if (isset($this->properties[$property])) { 
 		  return $this->properties[$property];
 	  }
-	  return $this->navigateLink($property);
+	  $bean = $this->navigateLink($property);
+    if ($bean instanceof RedBean_OODBBean) {
+      $this->properties[$property] = $bean;
+    }
+	  return $bean;
 	}
 
 	/**
@@ -139,7 +143,16 @@ class RedBean_OODBBean implements IteratorAggregate {
 		
     // setting a bean-type property
     if ($value instanceof RedBean_OODBBean) {
-      $this->link ($property, $value);
+      $this->link($property, $value);
+    }
+    // unlinking a bean-type property
+    elseif ($value === null) {
+      $cur = @$this->properties[$property];
+      if ($cur instanceof RedBean_OODBBean) {
+        $this->unlink($property, $cur->getMeta("type"));
+        unset ($this->properties[$property]);
+        return;
+      }
     }
 		elseif ($value===false) {
 			$value = "0";
@@ -158,8 +171,11 @@ class RedBean_OODBBean implements IteratorAggregate {
   }
   
   protected function link ($property, $value) {
-    $linker = $this->getLinker();
-    $linker->link($this, $value, $property);
+    $this->getLinker()->link($this, $value, $property);
+  }
+  
+  protected function unlink ($property, $type) {
+    $this->getLinker()->breakLink($this, $type, $property);
   }
   
   protected function navigateLink ($property) {
@@ -169,7 +185,6 @@ class RedBean_OODBBean implements IteratorAggregate {
       if ($name != $property || $id != "id") continue;
       return $this->getLinker()->getBean($this, $type, $property);
     }
-    return null;
   }
 
 	/**

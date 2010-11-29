@@ -113,16 +113,15 @@ class RedBean_LinkManager extends RedBean_CompatManager {
 		return $id;
 	}
 
-
-
 	/**
 	 * Returns all beans that are linked to the given bean.
 	 * @param RedBean_OODBBean $bean
 	 * @param string $typeName
+	 * @param string $name of relationship
 	 * @return array $beans
 	 */
-	public function getKeys( RedBean_OODBBean $bean, $typeName ) {
-		$fieldName = $this->getLinkField($typeName);
+	public function getKeys( RedBean_OODBBean $bean, $typeName, $name = null ) {
+		$fieldName = $this->getLinkField($typeName, $name);
 		$id = (int)$bean->$fieldName;
 		$ids = $this->writer->selectByCrit($this->writer->getIDField($this->writer->getFormattedTableName($typeName)),
 				  $typeName,

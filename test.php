@@ -46,6 +46,8 @@ function asrt( $a, $b ) {
 		print( "[".$tests."]" );
 	}
 	else {
+	  if (is_object($a)) $a = json_encode($a);
+	  if (is_object($b)) $b = json_encode($b);
 		printtext("FAILED TEST: EXPECTED $b BUT GOT: $a ");
 		fail();
 	}
@@ -88,7 +90,6 @@ try {
 }catch(RedBean_Exception_NotImplemented $e) {
 	pass();
 }
-
 
 // $toolbox = RedBean_Setup::kickstartDev( "mysql:host=localhost;dbname=oodb","root","" );
 $toolbox = RedBean_Setup::kickstartDev(
@@ -495,6 +496,11 @@ asrt(($redbean instanceof RedBean_OODB),true);
 
 $pdo = $adapter->getDatabase();
 $pdo->setDebugMode(0);
+
+$pdo->Execute("DROP SCHEMA IF EXISTS {$ini['mysql']['schema']}");
+$pdo->Execute("CREATE SCHEMA {$ini['mysql']['schema']}");
+$pdo->Execute("USE {$ini['mysql']['schema']}");
+
 $pdo->Execute("CREATE TABLE IF NOT EXISTS`hack` (
 `id` INT( 11 ) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY
 ) ENGINE = MYISAM ;
@@ -525,10 +531,17 @@ $pdo->Execute("DROP TABLE IF EXISTS __log");
 $pdo->Execute("DROP TABLE IF EXISTS dummy");
 $pdo->Execute("DROP TABLE IF EXISTS human");
 $pdo->Execute("DROP TABLE IF EXISTS animal");
+$pdo->Execute("DROP TABLE IF EXISTS somebean");
 
 
+testpack("Are Bean-Type Properties Causing Weird Side Effects?");
 
-testpack("Set Property as Bean");
+$b = $redbean->dispense("somebean");
+$redbean->store($b);
+asrt($b->hmm, null);
+
+
+testpack("Set Bean-Type Property");
 
 $bob = $redbean->dispense("human");
 $bob->name="billybob";
@@ -537,23 +550,42 @@ $redbean->store($bob);
 $a = $redbean->dispense("animal");
 $a->name="rover";
 $a->master=$bob;
-$redbean->store($a);
+try { $redbean->store($a); pass(); } catch (Exception $e) { fail(); }
 asrt($a->master_human_id, 1);
 
 $a = $redbean->dispense("animal");
 $a->name="fuzznugget";
 $a->master=$bob;
-$redbean->store($a);
+try { $redbean->store($a); pass(); } catch (Exception $e) { fail(); }
 asrt($a->master_human_id, 1);
 
-testpack("Get Property as Bean");
+testpack("Get Bean-Type Property");
 
 $dog = $redbean->load("animal",1);
 $cat = $redbean->load("animal",2);
+asrt($dog instanceof RedBean_OODBBean, true);
+asrt($cat instanceof RedBean_OODBBean, true);
 asrt($dog->name, "rover");
 asrt($dog->master->name, "billybob");
 asrt($cat->name, "fuzznugget");
 asrt($cat->master->name, "billybob");
+
+testpack("Unlink Bean-Type Property");
+
+$cat->master = null;
+$m = $cat->master;
+asrt($m instanceof RedBean_OODBBean, true);
+asrt($m->getMeta("type"), "human");
+asrt($m->id, 0);
+
+$redbean->store($cat);
+$cat = $redbean->load("animal",2);
+asrt($cat->master_human_id, null);
+
+$m = $cat->master;
+asrt($m instanceof RedBean_OODBBean, true);
+asrt($m->getMeta("type"), "human");
+asrt($m->id, 0);
 
 
 //Test real events: update,open,delete
