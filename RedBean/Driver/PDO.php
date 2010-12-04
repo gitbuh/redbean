@@ -144,11 +144,7 @@ class RedBean_Driver_PDO implements RedBean_Driver {
 			echo "<HR>" . $sql.print_r($aValues,1);
 		}
 
-
-
-
 		try {
-
 
 			if (strpos("pgsql",$this->dsn)===0) {
 				$s = $this->pdo->prepare($sql, array(PDO::PGSQL_ATTR_DISABLE_NATIVE_PREPARED_STATEMENT => true));
@@ -170,12 +166,18 @@ class RedBean_Driver_PDO implements RedBean_Driver {
 		}catch(PDOException $e) {
 			//Unfortunately the code field is supposed to be int by default (php)
 			//So we need a property to convey the SQL State code.
+			$msg = $e->getMessage();
 			if (version_compare(PHP_VERSION, '5.3.0', '<')) {
-				$x = new RedBean_Exception_SQL( $e->getMessage(), 0);
+				$x = new RedBean_Exception_SQL( $msg, 0);
 			}
 			else {
-				$x = new RedBean_Exception_SQL( $e->getMessage(), 0, $e );
+				$x = new RedBean_Exception_SQL( $msg, 0, $e );
 			}
+			
+			// ignore mysql table not found
+			// TODO: where should this go?
+			if (strpos($msg, '[42S02]')!==false) return array();
+			 
 			$x->setSQLState( $e->getCode() );
 			throw $x;
 		}
