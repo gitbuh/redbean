@@ -105,6 +105,14 @@ class RedBean_OODBBean implements IteratorAggregate {
 	public function __isset( $property ) {
 		return (isset($this->properties[$property]));
 	}
+	
+	/**
+	 * Unset a property
+	 * @param string $property
+	 */
+	public function remove ( $property ) {
+		unset($this->properties[$property]);
+	}
 
 
 	/**
