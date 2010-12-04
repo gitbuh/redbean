@@ -127,8 +127,7 @@ abstract class RedBean_AQueryWriter {
 	 */
 	public function getTables () {
 	  if (!$this->frozen) return $this->getTablesReal();
-    if ($this->gotTables) return $this->gotTables;
-    $this->gotTables=$this->getTablesReal();
+    if (!$this->gotTables) $this->gotTables=$this->getTablesReal();
 	  return $this->gotTables;
 	}
 	
@@ -141,8 +140,9 @@ abstract class RedBean_AQueryWriter {
 	 */
 	public function getColumns( $table ) {
 	  if (!$this->frozen) return $this->getColumnsReal($table);
-    if (array_key_exists($table, $this->gotColumns)) return $this->gotColumns[$table];
-    $this->gotColumns[$table] = $this->getColumnsReal($table);
+    if (!array_key_exists($table, $this->gotColumns)) {
+      $this->gotColumns[$table] = $this->getColumnsReal($table);
+    }
 	  return $this->gotColumns[$table];
 	}
 	
