@@ -68,6 +68,7 @@ class RedBean_Plugin_Optimizer extends RedBean_CompatManager implements RedBean_
 				$type = $this->writer->scanType($value);
 				$fields = $this->writer->getColumns($table);
 				if (!in_array($column,array_keys($fields))) return;
+				if ($fields[$column] == 'datetime') return; 
 				$typeInField = $this->writer->code($fields[$column]);
 				//Is the type too wide?
 				if ($type < $typeInField) {

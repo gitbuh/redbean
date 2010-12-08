@@ -332,7 +332,7 @@ class RedBean_QueryWriter_NullWriter extends RedBean_AQueryWriter implements Red
 	}
 
 
-	public function getIDField( $type ) {
+	public function getIDField( $type, $safe = null ) {
 		return "id";
 	}
 
