@@ -49,7 +49,7 @@ class RedBean_Plugin_Finder implements RedBean_Plugin {
 		if ($SQL==="") $SQL = " 1 ";
 
 		//Sorry, quite draconic filtering
-		$type = preg_replace("/\W/","", $type);
+		$type = preg_replace("/[^\w\.]/","", $type);
 
 		//First get hold of the toolbox
 		if (!$tools) $tools = RedBean_Setup::getToolBox();

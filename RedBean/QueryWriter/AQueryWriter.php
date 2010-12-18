@@ -213,7 +213,7 @@ abstract class RedBean_AQueryWriter {
 	 */
 	public function noKW($str) {
 		$q = $this->quoteCharacter;
-		return $q.$str.$q;
+		return $q.implode("$q.$q", explode('.', $str)).$q;
 	}
 	
 	/**
