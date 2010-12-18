@@ -163,7 +163,7 @@ class RedBean_QueryWriter_MySQL extends RedBean_AQueryWriter implements RedBean_
 	 * 
 	 * @return array $tables tables
 	 */
-	public function getTables() {
+	public function getTablesReal() {
 		return $this->adapter->getCol( "show tables" );
 	}
 
@@ -191,7 +191,7 @@ class RedBean_QueryWriter_MySQL extends RedBean_AQueryWriter implements RedBean_
 	 *
 	 * @return array $columns columns
 	 */
-	public function getColumns( $table ) {
+	public function getColumnsReal( $table ) {
 		$table = $this->safeTable($table);
 		$columnsRaw = $this->adapter->get("DESCRIBE $table");
 		foreach($columnsRaw as $r) {

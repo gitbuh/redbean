@@ -365,7 +365,7 @@ class RedBean_QueryWriter_NullWriter extends RedBean_AQueryWriter implements Red
 	 *
 	 * @return mixed
 	 */
-	public function getTables() {
+	public function getTablesReal() {
 		return $this->returnTables;
 	}
 
@@ -385,7 +385,7 @@ class RedBean_QueryWriter_NullWriter extends RedBean_AQueryWriter implements Red
 	 *
 	 * @return mixed
 	 */
-	public function getColumns( $table ) {
+	public function getColumnsReal( $table ) {
 		$this->getColumnsArgument = $table;
 		return $this->returnGetColumns;
 	}
