@@ -1,16 +1,18 @@
 <?php
 /**
- * RedBean MySQLWriter
- * @package 		RedBean/QueryWriter/PostgreSQL.php
- * @description		Represents a PostgreSQL Database to RedBean
- *			To write a driver for a different database for RedBean
- *			you should only have to change this file.
+ * RedBean PostgreSQL Query Writer
+ * @file				RedBean/QueryWriter/PostgreSQL.php
+ * @description	QueryWriter for the PostgreSQL database system.
+ *
  * @author			Gabor de Mooij
  * @license			BSD
+ *
+ *
+ * (c) G.J.G.T. (Gabor) de Mooij
+ * This source file is subject to the BSD/GPLv2 License that is bundled
+ * with this source code in the file license.txt.
  */
-class RedBean_QueryWriter_PostgreSQL extends RedBean_AQueryWriter implements RedBean_QueryWriter {
-
-
+class RedBean_QueryWriter_PostgreSQL extends RedBean_QueryWriter_AQueryWriter implements RedBean_QueryWriter {
 
 	/**
 	 * DATA TYPE
@@ -33,10 +35,6 @@ class RedBean_QueryWriter_PostgreSQL extends RedBean_AQueryWriter implements Red
 	 */
 	const C_DATATYPE_TEXT = 3;
 
-
-
-
-
 	/**
 	 * @var array
 	 * Supported Column Types
@@ -58,6 +56,13 @@ class RedBean_QueryWriter_PostgreSQL extends RedBean_AQueryWriter implements Red
 			  "double precision" => self::C_DATATYPE_DOUBLE,
 			  "text"=>self::C_DATATYPE_TEXT
 	);
+
+	/**
+	 *
+	 * @var RedBean_DBAdapter
+	 * Holds Database Adapter
+	 */
+	protected $adapter;
 	
 	/**
 	 * @var string
@@ -65,8 +70,20 @@ class RedBean_QueryWriter_PostgreSQL extends RedBean_AQueryWriter implements Red
 	 */
   protected $quoteCharacter = '"';
 
+  /**
+   *
+   * @var string
+   * Default Value
+   */
   protected $defaultValue = 'DEFAULT';
-	 
+
+  /**
+   * Returns the insert suffix SQL Snippet
+   * 
+   * @param string $table table
+   *
+   * @return  string $sql SQL Snippet
+   */
   protected function getInsertSuffix($table) {
     return "RETURNING ".$this->getIDField($table);
   }  
@@ -74,7 +91,8 @@ class RedBean_QueryWriter_PostgreSQL extends RedBean_AQueryWriter implements Red
 	/**
 	 * Constructor
 	 * The Query Writer Constructor also sets up the database
-	 * @param RedBean_DBAdapter $adapter
+	 *
+	 * @param RedBean_DBAdapter $adapter adapter
 	 */
 	public function __construct( RedBean_Adapter_DBAdapter $adapter ) {
 		$this->adapter = $adapter;
@@ -82,7 +100,8 @@ class RedBean_QueryWriter_PostgreSQL extends RedBean_AQueryWriter implements Red
 
 	/**
 	 * Returns all tables in the database
-	 * @return array $tables
+	 *
+	 * @return array tables
 	 */
 	public function getTablesReal() {
 		return $this->adapter->getCol( "select table_name from information_schema.tables
@@ -91,7 +110,8 @@ where table_schema = 'public'" );
 
 	/**
 	 * Creates an empty, column-less table for a bean.
-	 * @param string $table
+	 *
+	 * @param string $table table to create
 	 */
 	public function createTable( $table ) {
 		$idfield = $this->getIDfield($table);
@@ -102,8 +122,10 @@ where table_schema = 'public'" );
 
 	/**
 	 * Returns an array containing the column names of the specified table.
-	 * @param string $table
-	 * @return array $columns
+	 *
+	 * @param string $table table to get columns from
+	 *
+	 * @return array $columns array filled with column (name=>type)
 	 */
 	public function getColumnsReal( $table ) {
 		$table = $this->safeTable($table, true);
@@ -115,16 +137,22 @@ where table_schema = 'public'" );
 	}
 
 	/**
-	 * Returns the MySQL Column Type Code (integer) that corresponds
+	 * Returns the pgSQL Column Type Code (integer) that corresponds
 	 * to the given value type.
-	 * @param string $value
-	 * @return integer $type
+	 *
+	 * @param string $value value to determine type of
+	 *
+	 * @return integer $type type code for this value
 	 */
 	public function scanType( $value ) {
-		if (is_integer($value) && $value < 2147483648 && $value > -2147483648) {
+		//echo " \n\n value = $value => ".strval(intval($value))." same? ".($value===strval(intval($value)));
+		if (is_numeric($value)
+				  && floor($value)==$value
+				  && $value < 2147483648
+				  && $value > -2147483648) {
 			return self::C_DATATYPE_INTEGER;
 		}
-		elseif( is_double($value) ) {
+		elseif(is_numeric($value)) {
 			return self::C_DATATYPE_DOUBLE;
 		}
 		else {
@@ -134,8 +162,10 @@ where table_schema = 'public'" );
 
 	/**
 	 * Returns the Type Code for a Column Description
-	 * @param string $typedescription
-	 * @return integer $typecode
+	 *
+	 * @param string $typedescription type description to get code for
+	 *
+	 * @return integer $typecode type code
 	 */
 	public function code( $typedescription ) {
 		return ((isset($this->sqltype_typeno[$typedescription])) ? $this->sqltype_typeno[$typedescription] : 99);
@@ -143,9 +173,10 @@ where table_schema = 'public'" );
 
 	/**
 	 * Change (Widen) the column to the give type.
-	 * @param string $table
-	 * @param string $column
-	 * @param integer $type
+	 *
+	 * @param string  $table  table to widen
+	 * @param string  $column column to widen
+	 * @param integer $type   new column type
 	 */
 	public function widenColumn( $table, $column, $type ) {
 		$table = $this->safeTable($table);
@@ -168,10 +199,12 @@ where table_schema = 'public'" );
 	 * If changes have occurred it will throw an exception. If no changes have occurred
 	 * it will insert a new change record and return the new change id.
 	 * This method locks the log table exclusively.
-	 * @param  string $type
-	 * @param  integer $id
-	 * @param  integer $logid
-	 * @return integer $newchangeid
+	 *
+	 * @param  string  $type  type
+	 * @param  integer $id    id
+	 * @param  integer $logid log id
+	 *
+	 * @return integer $newchangeid new change id
 	 */
 	public function checkChanges($type, $id, $logid) {
 
@@ -194,9 +227,11 @@ where table_schema = 'public'" );
 	}
 	/**
 	 * Adds a Unique index constrain to the table.
-	 * @param string $table
-	 * @param string $col1
-	 * @param string $col2
+	 *
+	 * @param string $table table to add index to
+	 * @param string $col1  column to be part of index
+	 * @param string $col2  column 2 to be part of index
+	 *
 	 * @return void
 	 */
 	public function addUniqueIndex( $table,$columns ) {
@@ -248,9 +283,11 @@ where table_schema = 'public'" );
 	 * Standard SQL States this function converts the raw SQL state to a
 	 * database agnostic ANSI-92 SQL states and checks if the given state
 	 * is in the list of agnostic states.
-	 * @param string $state
-	 * @param array $list
-	 * @return boolean $isInArray
+	 *
+	 * @param string $state state
+	 * @param array  $list  list of states
+	 *
+	 * @return boolean $isInArray whether state is in list
 	 */
 	public function sqlStateIn($state, $list) {
 
@@ -258,6 +295,27 @@ where table_schema = 'public'" );
 		if ($state == "42P01") $sqlState = RedBean_QueryWriter::C_SQLSTATE_NO_SUCH_TABLE;
 		if ($state == "42703") $sqlState = RedBean_QueryWriter::C_SQLSTATE_NO_SUCH_COLUMN;
 		return in_array($sqlState, $list);
+	}
+
+	/**
+	 * Returns a snippet of SQL to filter records using SQL and a list of
+	 * keys.
+	 *
+	 * @param string  $idfield ID Field to use for selecting primary key
+	 * @param array   $keys		List of keys to use for filtering
+	 * @param string  $sql		SQL to append, if any
+	 * @param boolean $inverse Whether you want to inverse the selection
+	 *
+	 * @return string $snippet SQL Snippet crafted by function
+	 */
+	public function getSQLSnippetFilter( $idfield, $keys, $sql=null, $inverse=false ) {
+		if (!$sql) $sql=" TRUE ";
+		if (!$inverse && count($keys)===0) return " TRUE ";
+		$idfield = $this->noKW($idfield);
+		$sqlInverse = ($inverse) ? "NOT" : "";
+		$sqlKeyFilter = ($keys) ? " $idfield $sqlInverse IN (".implode(",",$keys).") AND " : " ";
+		$sqlSnippet = $sqlKeyFilter . $sql;
+		return $sqlSnippet;
 	}
 
 
