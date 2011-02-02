@@ -17,7 +17,7 @@
  * with this source code in the file license.txt.
  */
 
-abstract class RedBean_AQueryWriter {
+abstract class RedBean_QueryWriter_AQueryWriter {
 
 
 	/**
@@ -184,7 +184,9 @@ abstract class RedBean_AQueryWriter {
 	 *
 	 * @return string $idfieldtobeused ID field to be used for this type of bean
 	 */
-	public function getIDField( $type, $safe = null ) {
+	public function getIDField( $type ) {
+		$nArgs = func_num_args();
+		if ($nArgs>1) $safe = func_get_arg(1); else $safe = false;
 		if ($this->tableFormatter) return $this->tableFormatter->formatBeanID($type);
 		return $safe ? $this->safeColumn($this->idfield) : $this->idfield;
 	}
@@ -285,7 +287,7 @@ abstract class RedBean_AQueryWriter {
 			$result = $this->adapter->getCell( "INSERT INTO $table ($idfield) VALUES($default) $suffix");
 		}
 		if ($suffix) return $result;
-	  $last_id = $this->adapter->getInsertID();
+	   $last_id = $this->adapter->getInsertID();
 		return ($this->adapter->getErrorMsg()=="" ?  $last_id : 0);
 	}
 	
@@ -373,5 +375,26 @@ abstract class RedBean_AQueryWriter {
 		$sql = "DELETE FROM $table WHERE ".implode(" AND ", $conditions);
 		return (int) $this->adapter->exec($sql, $values);
 	}
-	
+
+	/**
+	 * Returns a snippet of SQL to filter records using SQL and a list of
+	 * keys.
+	 *
+	 * @param string  $idfield ID Field to use for selecting primary key
+	 * @param array   $keys		List of keys to use for filtering
+	 * @param string  $sql		SQL to append, if any
+	 * @param boolean $inverse Whether you want to inverse the selection
+	 *
+	 * @return string $snippet SQL Snippet crafted by function
+	 */
+	public function getSQLSnippetFilter( $idfield, $keys, $sql=null, $inverse=false ) {
+		if (!$sql) $sql=" 1 ";
+		if (!$inverse && count($keys)===0) return " 0 ";
+		$idfield = $this->noKW($idfield);
+		$sqlInverse = ($inverse) ? "NOT" : "";
+		$sqlKeyFilter = ($keys) ? " $idfield $sqlInverse IN (".implode(",",$keys).") AND " : " ";
+		$sqlSnippet = $sqlKeyFilter . $sql;
+		return $sqlSnippet;
+	}
+
 }

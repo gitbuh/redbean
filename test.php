@@ -17,7 +17,7 @@
  * @author			Gabor de Mooij
  * @license			BSD
  */
-
+error_reporting(E_ALL | E_STRICT);
 $ini = parse_ini_file("test.ini", true);
 
 /**
@@ -124,6 +124,9 @@ class ObserverMock implements RedBean_Observer {
 $nullWriter = new RedBean_QueryWriter_NullWriter();
 $redbean = new RedBean_OODB( $nullWriter );
 $linker = new RedBean_LinkManager( $toolbox );
+
+testpack("TEST VERSIONING");
+asrt(R::getVersion(),"1.2.9.1");
 
 //Section A: Config Testing
 testpack("CONFIG TEST");
@@ -1481,6 +1484,11 @@ $one = $redbean->dispense("one");
 $one->col = str_repeat('a long text',100);
 $redbean->store($one);
 $optimizer = new RedBean_Plugin_Optimizer( $toolbox );
+
+//order is important!
+$optimizer->addOptimizer(new RedBean_Plugin_Optimizer_DateTime($toolbox));
+$optimizer->addOptimizer(new RedBean_Plugin_Optimizer_Shrink($toolbox));
+
 $redbean->addEventListener("update", $optimizer);
 $writer  = $toolbox->getWriter();
 $cols = $writer->getColumns("one");
@@ -2450,6 +2458,7 @@ R::tag($blog, false);
 asrt(R::tag($blog),"");
 
 
+
 testpack("New relations");
 $pdo->Execute("DROP TABLE IF EXISTS person");
 $pdo->Execute("DROP TABLE IF EXISTS person_person");
@@ -2494,5 +2503,86 @@ asrt(count($students),1);
 $s = reset($students);
 asrt($s->name, 'b');
 
+function getList($beans,$property) {
+	$items = array();
+	foreach($beans as $bean) {
+		$items[] = $bean->$property;
+	}
+	sort($items);
+	return implode(",",$items);
+}
+
+testpack("unrelated");
+$pdo->Execute("DROP TABLE IF EXISTS person");
+$pdo->Execute("DROP TABLE IF EXISTS person_person");
+$painter = R::dispense('person');
+$painter->job = 'painter';
+$accountant = R::dispense('person');
+$accountant->job = 'accountant';
+$developer = R::dispense('person');
+$developer->job = 'developer';
+$salesman = R::dispense('person');
+$salesman->job = 'salesman';
+R::associate($painter, $accountant);
+R::associate($salesman, $accountant);
+R::associate($developer, $accountant);
+R::associate($salesman, $developer);
+asrt( getList( R::unrelated($salesman,"person"),"job" ), "painter,salesman" ) ;
+asrt( getList( R::unrelated($accountant,"person"),"job" ), "accountant" ) ;
+asrt( getList( R::unrelated($painter,"person"),"job" ), "developer,painter,salesman" ) ;
+R::associate($accountant, $accountant);
+R::associate($salesman, $salesman);
+R::associate($developer, $developer);
+R::associate($painter, $painter);
+asrt( getList( R::unrelated($accountant,"person"),"job" ), "" ) ;
+asrt( getList( R::unrelated($painter,"person"),"job" ), "developer,salesman" ) ;
+asrt( getList( R::unrelated($salesman,"person"),"job" ), "painter" ) ;
+asrt( getList( R::unrelated($developer,"person"),"job" ), "painter" ) ;
+
+
+
+function setget($val) {
+global $pdo;
+$bean = R::dispense("page");
+$_tables = R::$writer->getTables();
+if (in_array("page",$_tables)) $pdo->Execute("DROP TABLE page");
+$bean->prop = $val;
+$id = R::store($bean);
+$bean = R::load("page",$id);
+return $bean->prop;
+}
+
+//this module tests whether values we store are the same we get returned
+//PDO is a bit unpred. with this but using STRINGIFY attr this should work we test this here
+testpack("pdo and types");
+asrt(setget("-1"),"-1");
+asrt(setget(-1),"-1");
+asrt(setget("-0.25"),"-0.25");
+asrt(setget(-0.25),"-0.25");
+asrt(setget("-0.12345678"),"-0.12345678");
+asrt(setget(-0.12345678),"-0.12345678");
+asrt(setget("2147483647"),"2147483647");
+asrt(setget(2147483647),"2147483647");
+asrt(setget(-2147483647),"-2147483647");
+asrt(setget("-2147483647"),"-2147483647");
+asrt(setget("2147483647123456"),"2.14748364712346e+15");
+asrt(setget(2147483647123456),"2.14748364712e+15");
+asrt(setget("a"),"a");
+asrt(setget("."),".");
+asrt(setget("\""),"\"");
+asrt(setget("just some text"),"just some text");
+asrt(setget(true),"1");
+asrt(setget(false),"0");
+asrt(setget("true"),"true");
+asrt(setget("false"),"false");
+asrt(setget("null"),"null");
+asrt(setget("NULL"),"NULL");
+
+
+testpack("non-static invocations");
+$r =  R::getInstance();
+asrt( getList( $r->unrelated($developer,"person"),"job" ), "painter" ) ;
+
 
 printtext("\nALL TESTS PASSED. REDBEAN SHOULD WORK FINE.\n");
+

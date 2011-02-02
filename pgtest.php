@@ -17,7 +17,7 @@
  * @author			Gabor de Mooij
  * @license			BSD
  */
-
+error_reporting(E_ALL | E_STRICT);
 $ini = parse_ini_file("test.ini", true);
 
 function printtext( $text ) {
@@ -39,7 +39,7 @@ function asrt( $a, $b ) {
 		print( "[".$tests."]" );
 	}
 	else {
-		printtext("FAILED TEST: EXPECTED $b BUT GOT: $a ");
+		printtext("FAILED TEST: EXPECTED $b (".gettype($b).") BUT GOT: $a (".gettype($a).") ");
 		fail();
 	}
 }
@@ -385,7 +385,7 @@ try {
 	if (in_array("logentry",$_tables)) $pdo->Execute("DROP TABLE logentry");
 	if (in_array("admin",$_tables)) $pdo->Execute("DROP TABLE admin");
 	if (in_array("wine",$_tables)) $pdo->Execute("DROP TABLE wine");
-	if (in_array("admin_logentry",$_tables)) $pdo->Execute("DROP TABLE admin_logentry");
+	if (in_array("admin_logentry",$_tables)) $pdo->Execute("DROP TABLE admin_logentry"); 
 	$page = $redbean->dispense("page");
 
 	testpack("UNIT TEST Database");
@@ -399,11 +399,11 @@ try {
 
 
 //Section C: Integration Tests / Regression Tests
-
+//	$adapter->getDatabase()->setDebugMode(1);
 	testpack("Test RedBean OODB: Insert Record");
 	$page->name = "my page";
 	$id = (int) $redbean->store($page);
-	asrt( $page->id, 1 );
+	asrt( (int) $page->id, 1 );
 	asrt( (int) $pdo->GetCell("SELECT count(*) FROM page"), 1 );
 	asrt( $pdo->GetCell("SELECT \"name\" FROM page LIMIT 1"), "my page" );
 	asrt( $id, 1 );
@@ -1066,7 +1066,7 @@ R::associate($page,$page2,'{"bla":2}');
 $pgs = R::related($page,"page");
 $p = reset($pgs);
 asrt($p->title,"mypagex");
-asrt(R::getCell("select bla from xx_page_page where bla > 0"),2);
+asrt((int)R::getCell("select bla from xx_page_page where bla > 0"),2);
 $t = R::$writer->getTables();
 asrt(in_array("xx_page_page",$t),true);
 asrt(in_array("page_page",$t),false);
@@ -1098,10 +1098,131 @@ asrt(in_array("cms_blog_id",array_keys(R::$writer->getColumns("blog"))),false);
 
 
 
+testpack("New relations");
+
+if (in_array("person",$_tables)) $pdo->Execute("DROP TABLE person");
+if (in_array("person_person",$_tables)) $pdo->Execute("DROP TABLE person_person");
+R::$writer->tableFormatter = null;
+$track = R::dispense('track');
+$album = R::dispense('cd');
+$track->name = 'a';
+$track->orderNum = 1;
+$track2 = R::dispense('track');
+$track2->orderNum = 2;
+$track2->name = 'b';
+R::associate( $album, $track );
+R::associate( $album, $track2 );
+$tracks = R::related( $album, 'track', ' TRUE ORDER BY "orderNum" ' );
+$track = array_shift($tracks);
+$track2 = array_shift($tracks);
+asrt($track->name,'a');
+asrt($track2->name,'b');
+
+$t = R::dispense('person');
+$s = R::dispense('person');
+$s2 = R::dispense('person');
+$t->name = 'a';
+$t->role = 'teacher';
+$s->role = 'student';
+$s2->role = 'student';
+$s->name = 'a';
+$s2->name = 'b';
+R::associate($t, $s);
+R::associate($t, $s2);
+$students = R::related($t, 'person', ' "role" = ?  ORDER BY "name" ',array("student"));
+$s = array_shift($students);
+$s2 = array_shift($students);
+asrt($s->name,'a');
+asrt($s2->name,'b');
+$s= R::relatedOne($t, 'person', ' role = ?  ORDER BY "name" ',array("student"));
+asrt($s->name,'a');
+//empty classroom
+R::clearRelations($t, 'person', $s2);
+$students = R::related($t, 'person', ' role = ?  ORDER BY "name" ',array("student"));
+asrt(count($students),1);
+$s = reset($students);
+asrt($s->name, 'b');
+
+function getList($beans,$property) {
+	$items = array();
+	foreach($beans as $bean) {
+		$items[] = $bean->$property;
+	}
+	sort($items);
+	return implode(",",$items);
+}
+
+testpack("unrelated");
+
+$pdo->Execute("DROP TABLE person");
+$pdo->Execute("DROP TABLE person_person");
+
+$painter = R::dispense('person');
+$painter->job = 'painter';
+$accountant = R::dispense('person');
+$accountant->job = 'accountant';
+$developer = R::dispense('person');
+$developer->job = 'developer';
+$salesman = R::dispense('person');
+$salesman->job = 'salesman';
+R::associate($painter, $accountant);
+R::associate($salesman, $accountant);
+R::associate($developer, $accountant);
+R::associate($salesman, $developer);
+asrt( getList( R::unrelated($salesman,"person"),"job" ), "painter,salesman" ) ;
+asrt( getList( R::unrelated($accountant,"person"),"job" ), "accountant" ) ;
+asrt( getList( R::unrelated($painter,"person"),"job" ), "developer,painter,salesman" ) ;
+R::associate($accountant, $accountant);
+R::associate($salesman, $salesman);
+R::associate($developer, $developer);
+R::associate($painter, $painter);
+asrt( getList( R::unrelated($accountant,"person"),"job" ), "" ) ;
+asrt( getList( R::unrelated($painter,"person"),"job" ), "developer,salesman" ) ;
+asrt( getList( R::unrelated($salesman,"person"),"job" ), "painter" ) ;
+asrt( getList( R::unrelated($developer,"person"),"job" ), "painter" ) ;
+
+function setget($val) {
+global $pdo;
+$bean = R::dispense("page");
+$_tables = R::$writer->getTables();
+if (in_array("page",$_tables)) $pdo->Execute("DROP TABLE page");
+$bean->prop = $val;
+$id = R::store($bean);
+$bean = R::load("page",$id);
+return $bean->prop;
+}
+
+//this module tests whether values we store are the same we get returned
+//PDO is a bit unpred. with this but using STRINGIFY attr this should work we test this here
+testpack("pdo and types");
+asrt(setget("-1"),"-1");
+asrt(setget(-1),"-1");
+asrt(setget("-0.25"),"-0.25");
+asrt(setget(-0.25),"-0.25");
+asrt(setget("-0.12345678"),"-0.12345678");
+asrt(setget(-0.12345678),"-0.12345678");
+asrt(setget("2147483647"),"2147483647");
+asrt(setget(2147483647),"2147483647");
+asrt(setget(-2147483647),"-2147483647");
+asrt(setget("-2147483647"),"-2147483647");
+asrt(setget("2147483647123456"),"2.14748364712346e+15");
+asrt(setget(2147483647123456),"2.14748364712e+15");
+asrt(setget("a"),"a");
+asrt(setget("."),".");
+asrt(setget("\""),"\"");
+asrt(setget("just some text"),"just some text");
+asrt(setget(true),"1");
+asrt(setget(false),"0");
+asrt(setget("true"),"true");
+asrt(setget("false"),"false");
+asrt(setget("null"),"null");
+asrt(setget("NULL"),"NULL");
+
 
 printtext("\nALL TESTS PASSED. REDBEAN SHOULD WORK FINE.\n");
 
 
 }catch(Exception $e) {
+	echo "\n\n\n".$e->getMessage();
 	echo "<pre>".$e->getTraceAsString();
 }
