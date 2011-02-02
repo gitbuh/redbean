@@ -1,10 +1,12 @@
 <?php
 /**
  * RedBean Facade
- * @file RedBean/Facade.php
- * @description	Facade Class for people who want to:
- * - focus on prototyping
- * - are not interested in OO architecture (yet)
+ * @file				RedBean/Facade.php
+ * @description	Convenience class for RedBeanPHP.
+ *						This class hides the object landscape of
+ *						RedBean behind a single letter class providing
+ *						almost all functionality with simple static calls.
+ *
  * @author			Gabor de Mooij
  * @license			BSD
  *
@@ -13,9 +15,17 @@
  * with this source code in the file license.txt.
  *
  */
-
+class RObj { public function __call($f,$a){ return call_user_func_array("R::$f", $a); } }
 class R {
 
+	/**
+	 * If you prefer to call methods on an instance, you can
+	 * use this method.
+	 */
+	public static function getInstance() {
+		return new RObj;
+	}
+	
 	/**
 	 *
 	 * Constains an instance of the RedBean Toolbox
@@ -71,6 +81,16 @@ class R {
 	public static $linkManager;
 
 	/**
+	 * Returns version ID string
+	 * Version No format: <Major>.<Minor>.<Maintenance>.<Fix/Update>
+	 * 
+	 * @return string $version Version ID
+	 */
+	public static function getVersion() {
+		return "1.2.9.1";
+	}
+
+	/**
 	 * Kickstarts redbean for you.
 	 * @param string $dsn
 	 * @param string $username
@@ -110,8 +130,10 @@ class R {
 
 	/**
 	 * Stores a RedBean OODB Bean and returns the ID.
-	 * @param RedBean_OODBBean $bean
-	 * @return integer $id
+	 *
+	 * @param  RedBean_OODBBean $bean bean
+	 * 
+	 * @return integer $id id
 	 */
 	public static function store( RedBean_OODBBean $bean ) {
 		return self::$redbean->store( $bean );
@@ -124,6 +146,7 @@ class R {
 	 * secure and fast.
 	 *
 	 * @param boolean $tf whether to turn it on or off.
+	 *
 	 * @return void
 	 */
 	public static function freeze( $tf = true ) {
@@ -133,8 +156,10 @@ class R {
 
 	/**
 	 * Loads the bean with the given type and id and returns it.
-	 * @param string $type
-	 * @param integer $id
+	 *
+	 * @param string  $type type
+	 * @param integer $id   id of the bean you want to load
+	 *
 	 * @return RedBean_OODBBean $bean
 	 */
 	public static function load( $type, $id ) {
@@ -143,7 +168,9 @@ class R {
 
 	/**
 	 * Deletes the specified bean.
-	 * @param RedBean_OODBBean $bean
+	 *
+	 * @param RedBean_OODBBean $bean bean to be deleted
+	 *
 	 * @return mixed
 	 */
 	public static function trash( RedBean_OODBBean $bean ) {
@@ -153,8 +180,10 @@ class R {
 	/**
 	 * Dispenses a new RedBean OODB Bean for use with
 	 * the rest of the methods.
-	 * @param string $type
-	 * @return RedBean_OODBBean $bean
+	 *
+	 * @param string $type type
+	 *
+	 * @return RedBean_OODBBean $bean a new bean
 	 */
 	public static function dispense( $type ) {
 		return self::$redbean->dispense( $type );
@@ -162,21 +191,31 @@ class R {
 
 	/**
 	 * Loads a bean if ID > 0 else dispenses.
-	 * @param string $type
-	 * @param integer $id
-	 * @return RedBean_OODBBean $bean
+	 *
+	 * @param string  $type type
+	 * @param integer $id   id
+	 *
+	 * @return RedBean_OODBBean $bean bean
 	 */
 	public static function loadOrDispense( $type, $id = 0 ) {
 		return ($id ? R::load($type,(int)$id) : R::dispense($type));
 	}
 
-
-
 	/**
-	 * Associates two Beans.
-	 * @param RedBean_OODBBean $bean1
-	 * @param RedBean_OODBBean $bean2
-	 * @param mixed $extra
+	 * Associates two Beans. This method will associate two beans with eachother.
+	 * You can then get one of the beans by using the related() function and
+	 * providing the other bean. You can also provide a base bean in the extra
+	 * parameter. This base bean allows you to add extra information to the association
+	 * record. Note that this is for advanced use only and the information will not
+	 * be added to one of the beans, just to the association record.
+	 * It's also possible to provide an array or JSON string as base bean. If you
+	 * pass a scalar this function will interpret the base bean as having one
+	 * property called 'extra' with the value of the scalar.
+	 *
+	 * @param RedBean_OODBBean $bean1 bean that will be part of the association
+	 * @param RedBean_OODBBean $bean2 bean that will be part of the association
+	 * @param mixed $extra            bean, scalar, array or JSON providing extra data.
+	 *
 	 * @return mixed
 	 */
 	public static function associate( RedBean_OODBBean $bean1, RedBean_OODBBean $bean2, $extra = null ) {
@@ -192,7 +231,6 @@ class R {
 			else {
 				$info = $extra;
 			}
-			//print_r( $info );exit;
 			$bean = R::dispense("typeLess");
 			$bean->import($info);
 			return self::$extAssocManager->extAssociate($bean1, $bean2, $bean);
@@ -203,8 +241,14 @@ class R {
 	
 	/**
 	 * Breaks the association between two beans.
-	 * @param RedBean_OODBBean $bean1
-	 * @param RedBean_OODBBean $bean2
+	 * This functions breaks the association between a pair of beans. After
+	 * calling this functions the beans will no longer be associated with
+	 * eachother. Calling related() with either one of the beans will no longer
+	 * return the other bean.
+	 *
+	 * @param RedBean_OODBBean $bean1 bean
+	 * @param RedBean_OODBBean $bean2 bean
+	 *
 	 * @return mixed
 	 */
 	public static function unassociate( RedBean_OODBBean $bean1, RedBean_OODBBean $bean2 ) {
@@ -213,38 +257,70 @@ class R {
 
 	/**
 	 * Returns all the beans associated with $bean.
-	 * @param RedBean_OODBBean $bean
-	 * @param string $type
-	 * @return array $beans
+	 * This method will return an array containing all the beans that have
+	 * been associated once with the associate() function and are still
+	 * associated with the bean specified. The type parameter indicates the
+	 * type of beans you are looking for. You can also pass some extra SQL and
+	 * values for that SQL to filter your results after fetching the
+	 * related beans.
+	 *
+	 * @param RedBean_OODBBean $bean the bean you have
+	 * @param string				$type the type of beans you want
+	 * @param string				$sql  SQL snippet for extra filtering
+	 * @param array				$val  values to be inserted in SQL slots
+	 *
+	 * @return array $beans	beans yielded by your query.
 	 */
-	public static function related( RedBean_OODBBean $bean, $type, $sql = '1' ) {
-		//return self::$redbean->batch( $type, self::$associationManager->related( $bean, $type ));
+	public static function related( RedBean_OODBBean $bean, $type, $sql=null, $values=array()) {
+
 		$keys = self::$associationManager->related( $bean, $type );
 		if (count($keys)==0) return array();
-		if (!$sql || $sql=="1") return self::batch($type, $keys);
+		if (!$sql) return self::batch($type, $keys);
 		$idfield = self::$writer->getIDField( $type );
-		return self::find($type,
-				  " $idfield IN ( ".implode(",",$keys)." ) AND ".$sql);
+		$sqlSnippet = self::$writer->getSQLSnippetFilter($idfield, $keys, $sql);
+		return self::find( $type, $sqlSnippet, $values );
+
+		
 	}
+
+	/**
+	 * The opposite of related(). Returns all the beans that are not
+	 * associated with the bean provided.
+	 *
+	 * @param RedBean_OODBBean $bean   bean provided
+	 * @param string				$type   type of bean you are searching for
+	 * @param string				$sql    SQL for extra filtering
+	 * @param array				$values values to be inserted in SQL slots
+	 *
+	 * @return array $beans beans 
+	 */
+	public static function unrelated(RedBean_OODBBean $bean, $type, $sql=null, $values=array()) {
+		
+		$keys = self::$associationManager->related( $bean, $type );
+		$idfield = self::$writer->getIDField( $type );
+		$sqlSnippet = self::$writer->getSQLSnippetFilter($idfield, $keys, $sql, true);
+		return self::find( $type, $sqlSnippet, $values );
+
+	}
+
 
 	/**
 	 * Returns only single associated bean. This is the default way RedBean
 	 * handles N:1 relations, by just returning the 1st one ;)
 	 *
-	 * @param RedBean_OODBBean $bean
-	 * @param string $type
-	 * @param string $sql
+	 * @param RedBean_OODBBean $bean   bean provided
+	 * @param string				$type   type of bean you are searching for
+	 * @param string				$sql    SQL for extra filtering
+	 * @param array				$values values to be inserted in SQL slots
+	 *
 	 *
 	 * @return RedBean_OODBBean $bean
 	 */
-	public static function relatedOne( RedBean_OODBBean $bean, $type, $sql='1' ) {
-		$beans = self::related($bean, $type, $sql);
-		if (count($beans)==0) return array();
+	public static function relatedOne( RedBean_OODBBean $bean, $type, $sql='1', $values=array() ) {
+		$beans = self::related($bean, $type, $sql, $values);
+		if (count($beans)==0) return null;
 		return reset( $beans );
 	}
-
-
-
 
 	/**
 	 * Clears all associated beans.
@@ -263,8 +339,9 @@ class R {
 
 	/**
 	 * Attaches $child bean to $parent bean.
-	 * @param RedBean_OODBBean $parent
-	 * @param RedBean_OODBBean $child
+	 *
+	 * @param RedBean_OODBBean $parent parent
+	 * @param RedBean_OODBBean $child  child
 	 * @return mixed
 	 */
 	public static function attach( RedBean_OODBBean $parent, RedBean_OODBBean $child ) {
@@ -272,9 +349,12 @@ class R {
 	}
 
 	/**
+	 * @deprecated
 	 * Links two beans using a foreign key field, 1-N Assoc only.
-	 * @param RedBean_OODBBean $bean1
-	 * @param RedBean_OODBBean $bean2
+	 *
+	 * @param RedBean_OODBBean $bean1 bean1
+	 * @param RedBean_OODBBean $bean2 bean2
+	 *
 	 * @return mixed
 	 */
 	public static function link( RedBean_OODBBean $bean1, RedBean_OODBBean $bean2, $name = null ) {
@@ -282,26 +362,30 @@ class R {
 	}
 	/**
 	 *
-	 * @param RedBean_OODBBean $bean
-	 * @param string $typeName
+	 * @deprecated
+	 * @param RedBean_OODBBean $bean     bean
+	 * @param string				$typeName type
+	 *
 	 * @return mixed
 	 */
 	public static function getBean( RedBean_OODBBean $bean, $typeName, $name = null ) {
 		return self::$linkManager->getBean($bean, $typeName, $name );
 	}
 	/**
+	 *	@deprecated
+	 * @param RedBean_OODBBean $bean		 bean
+	 * @param string				$typeName type
 	 *
-	 * @param RedBean_OODBBean $bean
-	 * @param string $typeName
 	 * @return mixed
 	 */
 	public static function getKey( RedBean_OODBBean $bean, $typeName, $name = null ) {
 		return self::$linkManager->getKey($bean, $typeName, $name );
 	}
 	/**
+	 * @deprecated
 	 *
-	 * @param RedBean_OODBBean $bean
-	 * @param mixed $typeName
+	 * @param RedBean_OODBBean $bean		 bean
+	 * @param string				$typeName type
 	 */
 	public static function breakLink( RedBean_OODBBean $bean, $typeName, $name = null ) {
 		return self::$linkManager->breakLink( $bean, $typeName, $name );
@@ -309,8 +393,10 @@ class R {
 
 	/**
 	 * Returns all children beans under parent bean $parent
-	 * @param RedBean_OODBBean $parent
-	 * @return array $childBeans
+	 *
+	 * @param RedBean_OODBBean $parent parent
+	 *
+	 * @return array $childBeans child beans
 	 */
 	public static function children( RedBean_OODBBean $parent ) {
 		return self::$treeManager->children( $parent );
@@ -318,8 +404,10 @@ class R {
 
 	/**
 	 * Returns the parent of a bean.
-	 * @param RedBean_OODBBean $bean
-	 * @return RedBean_OODBBean $bean
+	 *
+	 * @param RedBean_OODBBean $bean bean
+	 *
+	 * @return RedBean_OODBBean $bean bean
 	 */
 	public static function getParent( RedBean_OODBBean $bean ) {
 		return self::$treeManager->getParent( $bean );
@@ -331,10 +419,12 @@ class R {
 	 * be inserted in the SQL statement by populating the value
 	 * array parameter; you can either use the question mark notation
 	 * or the slot-notation (:keyname).
-	 * @param string $type
-	 * @param string $sql
-	 * @param array $values
-	 * @return array $beans
+	 *
+	 * @param string $type   type
+	 * @param string $sql    sql
+	 * @param array  $values values
+	 *
+	 * @return array $beans  beans
 	 */
 	public static function find( $type, $sql="1", $values=array() ) {
 		return Finder::where( $type, $sql, $values );
@@ -342,11 +432,17 @@ class R {
 
 
 	/**
+	 * @deprecated
+	 *
+	 * Use related() instead.
+	 *
 	 * Convenience Method
-	 * @param RedBean_OODBBean $bean
-	 * @param string $type
-	 * @param string $sql
-	 * @param array $values
+	 *
+	 * @param RedBean_OODBBean $bean   bean
+	 * @param string				$type   type
+	 * @param string				$sql    sql
+	 * @param array				$values values
+	 *
 	 * @return array $beans
 	 */
 	public static function findRelated( RedBean_OODBBean $bean, $type, $sql=" id IN (:keys) ", $values=array()  ) {
@@ -356,11 +452,17 @@ class R {
 	}
 
 	/**
+	 * @deprecated
+	 *
+	 * Use related() instead.
+	 *
 	 * Convenience Method
-	 * @param RedBean_OODBBean $bean
-	 * @param string $type
-	 * @param string $sql
-	 * @param array $values
+	 *
+	 * @param RedBean_OODBBean $bean   bean
+	 * @param string				$type   type
+	 * @param string				$sql    sql
+	 * @param array				$values values
+	 *
 	 * @return array $beans
 	 */
 	public static function findLinks( RedBean_OODBBean $bean, $type, $sql=" id IN (:keys) ", $values=array() ) {
@@ -376,10 +478,12 @@ class R {
 	 * array parameter; you can either use the question mark notation
 	 * or the slot-notation (:keyname).
 	 * The variation also exports the beans (i.e. it returns arrays).
-	 * @param string $type
-	 * @param string $sql
-	 * @param array $values
-	 * @return array $arrays
+	 *
+	 * @param string $type   type
+	 * @param string $sql    sql
+	 * @param array  $values values
+	 *
+	 * @return array $arrays arrays
 	 */
 	public static function findAndExport($type, $sql="1", $values=array()) {
 		$items = Finder::where( $type, $sql, $values );
@@ -397,9 +501,11 @@ class R {
 	 * array parameter; you can either use the question mark notation
 	 * or the slot-notation (:keyname).
 	 * This variation returns the first bean only.
-	 * @param string $type
-	 * @param string $sql
-	 * @param array $values
+	 *
+	 * @param string $type	 type
+	 * @param string $sql	 sql
+	 * @param array  $values values
+	 *
 	 * @return RedBean_OODBBean $bean
 	 */
 	public static function findOne( $type, $sql="1", $values=array()) {
@@ -410,8 +516,10 @@ class R {
 
 	/**
 	 * Returns an array of beans.
-	 * @param string $type
-	 * @param array $ids
+	 *
+	 * @param string $type type
+	 * @param array  $ids  ids
+	 * 
 	 * @return array $beans
 	 */
 	public static function batch( $type, $ids ) {
@@ -421,10 +529,12 @@ class R {
 	/**
 	 * Returns a simple list instead of beans, based
 	 * on a type, property and an SQL where clause.
-	 * @param string $type
-	 * @param string $prop
-	 * @param string $where
-	 * @return array $list
+	 *
+	 * @param string $type  type
+	 * @param string $prop  property
+	 * @param string $where SQL
+	 *
+	 * @return array $list array items
 	 */
 	public static function lst( $type,$prop,$sql=" 1 " ) {
 		$list = self::find($type,$sql);
@@ -436,9 +546,12 @@ class R {
 	}
 
 	/**
+	 * Convenience function to execute Queries directly.
 	 * Executes SQL.
-	 * @param string $sql
-	 * @param array $values
+	 *
+	 * @param string $sql	 sql
+	 * @param array  $values values
+	 *
 	 * @return array $results
 	 */
 	public static function exec( $sql, $values=array() ) {
@@ -448,9 +561,12 @@ class R {
 	}
 
 	/**
+	 * Convenience function to execute Queries directly.
 	 * Executes SQL.
-	 * @param string $sql
-	 * @param array $values
+	 *
+	 * @param string $sql	 sql
+	 * @param array  $values values
+	 *
 	 * @return array $results
 	 */
 	public static function getAll( $sql, $values=array() ) {
@@ -460,10 +576,13 @@ class R {
 	}
 
 	/**
+	 * Convenience function to execute Queries directly.
 	 * Executes SQL.
-	 * @param string $sql
-	 * @param array $values
-	 * @return array $results
+	 *
+	 * @param string $sql	 sql
+	 * @param array  $values values
+	 *
+	 * @return string $result scalar
 	 */
 	public static function getCell( $sql, $values=array() ) {
 		return self::secureExec(function($sql, $values) {
@@ -472,9 +591,12 @@ class R {
 	}
 
 	/**
+	 * Convenience function to execute Queries directly.
 	 * Executes SQL.
-	 * @param string $sql
-	 * @param array $values
+	 *
+	 * @param string $sql	 sql
+	 * @param array  $values values
+	 *
 	 * @return array $results
 	 */
 	public static function getRow( $sql, $values=array() ) {
@@ -484,9 +606,12 @@ class R {
 	}
 
 	/**
+	 * Convenience function to execute Queries directly.
 	 * Executes SQL.
-	 * @param string $sql
-	 * @param array $values
+	 *
+	 * @param string $sql	 sql
+	 * @param array  $values values
+	 *
 	 * @return array $results
 	 */
 	public static function getCol( $sql, $values=array() ) {
@@ -497,10 +622,12 @@ class R {
 
 	/**
 	 * Executes SQL function but corrects for SQL states.
-	 * @param closure $func
-	 * @param mixed $default
-	 * @param string $sql
-	 * @param array $values
+	 *
+	 * @param closure $func		closure
+	 * @param mixed   $default default value to return
+	 * @param string  $sql		SQL
+	 * @param array   $values  values for slots
+	 *
 	 * @return mixed $results
 	 */
 	private static function secureExec( $func, $default=NULL, $sql, $values ) {
@@ -539,11 +666,12 @@ class R {
 	 * beans are copied, only the connections or references to these
 	 * beans.
 	 *
-	 * @param RedBean_OODBBean $bean
-	 * @param string $associatedBeanTypesStr
-	 * @return array $copiedBean
+	 * @param RedBean_OODBBean $bean							bean
+	 * @param string				$associatedBeanTypesStr bean types associated
+	 *
+	 * @return array $copiedBean the duplicated bean
 	 */
-	public static function copy($bean, $associatedBeanTypesStr) {
+	public static function copy($bean, $associatedBeanTypesStr="") {
 		$type = $bean->getMeta("type");
 		$copy = R::dispense($type);
 		$copy->import( $bean->export() );
@@ -567,8 +695,9 @@ class R {
 	 * swaps the value of the property.
 	 * This is handy if you need to swap the priority or orderNo
 	 * of an item (i.e. bug-tracking, page order).
-	 * @param array $beans
-	 * @param string $property
+	 *
+	 * @param array  $beans    beans
+	 * @param string $property property
 	 */
 	public static function swap( $beans, $property ) {
 		$bean1 = array_shift($beans);
@@ -582,8 +711,10 @@ class R {
 
 	/**
 	 * Converts a series of rows to beans.
-	 * @param string $type
-	 * @param array $rows  must contain an array of arrays.
+	 *
+	 * @param string $type type
+	 * @param array  $rows must contain an array of arrays.
+	 *
 	 * @return array $beans
 	 */
 	public static function convertToBeans($type,$rows) {
@@ -599,8 +730,9 @@ class R {
 	 * be associated with the bean. 
 	 * You may also pass an array instead of a string.
 	 *
-	 * @param RedBean_OODBBean $bean
-	 * @param mixed $tagList 
+	 * @param RedBean_OODBBean $bean    bean
+	 * @param mixed				$tagList tags
+	 *
 	 * @return string $commaSepListTags
 	 */
 	public static function tag( RedBean_OODBBean $bean, $tagList = null ) {
