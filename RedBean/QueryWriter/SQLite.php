@@ -145,4 +145,18 @@ class RedBean_QueryWriter_SQLite extends RedBean_QueryWriter_AQueryWriter implem
 		return in_array($sqlState, $list);
 	}
 
+
+	/**
+	 * Counts rows in a table.
+	 * Uses SQLite optimization for deleting all records (i.e. no WHERE)
+	 *
+	 * @param string $beanType
+	 *
+	 * @return integer $numRowsFound
+	 */
+	public function wipe($type) {
+		$table = $this->safeTable($type);
+		$this->adapter->exec("DELETE FROM $table");
+	}
+
 }

@@ -352,33 +352,6 @@ asrt($nullWriter->widenColumnArguments,array());
 $redbean->freeze(false);
 
 
-testpack("UNIT TEST RedBean OODBBean: Meta Information");
-$bean = new RedBean_OODBBean;
-$bean->setMeta( "this.is.a.custom.metaproperty" , "yes" );
-asrt($bean->getMeta("this.is.a.custom.metaproperty"),"yes");
-$bean->setMeta( "test", array( "one" => 123 ));
-asrt($bean->getMeta("test.one"),123);
-$bean->setMeta( "arr", array(1,2) );
-asrt(is_array($bean->getMeta("arr")),true);
-asrt($bean->getMeta("nonexistant"),NULL);
-asrt($bean->getMeta("nonexistant","abc"),"abc");
-asrt($bean->getMeta("nonexistant.nested"),NULL);
-asrt($bean->getMeta("nonexistant,nested","abc"),"abc");
-$bean->setMeta("test.two","second");
-asrt($bean->getMeta("test.two"),"second");
-$bean->setMeta("another.little.property","yes");
-asrt($bean->getMeta("another.little.property"),"yes");
-asrt($bean->getMeta("test.two"),"second");
-
-
-testpack("UNIT TEST RedBean OODBBean: copyMeta");
-$bean = new RedBean_OODBBean;
-$bean->setMeta("meta.meta","123");
-$bean2 = new RedBean_OODBBean;
-asrt($bean2->getMeta("meta.meta"),NULL);
-$bean2->copyMetaFrom($bean);
-asrt($bean2->getMeta("meta.meta"),"123");
-
 testpack("UNIT TEST RedBean OODBBean: import");
 $bean = new RedBean_OODBBean;
 $bean->import(array("a"=>1,"b"=>2));
@@ -436,9 +409,9 @@ $redbean->store($page);
 $page = $redbean->dispense("page");
 $page->name = "more is better";
 $redbean->store($page);
-asrt(count(Finder::where("page", " name LIKE '%more%' ")),3);
-asrt(count(Finder::where("page", " name LIKE :str ",array(":str"=>'%more%'))),3);
-asrt(count(Finder::where("page", " name LIKE :str ",array(":str"=>'%mxore%'))),0);
+asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE '%more%' ")),3);
+asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE :str ",array(":str"=>'%more%'))),3);
+asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE :str ",array(":str"=>'%mxore%'))),0);
 $bean = $redbean->dispense("wine");
 $bean->name = "bla";
 $redbean->store($bean);
@@ -450,69 +423,69 @@ $redbean->store($bean);
 $redbean->store($bean);
 $redbean->store($bean);
 $redbean->store($bean);
-Finder::where("wine", "id=5"); //  Finder:where call RedBean_OODB::convertToBeans
+RedBean_Plugin_Finder::where("wine", "id=5"); //  Finder:where call RedBean_OODB::convertToBeans
 $bean2 = $redbean->load("anotherbean", 5);
 asrt((int)$bean2->id,0);
 testpack("Test Gold SQL");
-asrt(count(Finder::where("wine"," 1 OR 1 ")),1);
-asrt(count(Finder::where("wine"," @id < 100 ")),1);
-asrt(count(Finder::where("wine"," @id > 100 ")),0);
-asrt(count(Finder::where("wine"," @id < 100 OR 1 ")),1);
-asrt(count(Finder::where("wine"," @id > 100 OR 1 ")),1);
-asrt(count(Finder::where("wine",
+asrt(count(RedBean_Plugin_Finder::where("wine"," 1 OR 1 ")),1);
+asrt(count(RedBean_Plugin_Finder::where("wine"," @id < 100 ")),1);
+asrt(count(RedBean_Plugin_Finder::where("wine"," @id > 100 ")),0);
+asrt(count(RedBean_Plugin_Finder::where("wine"," @id < 100 OR 1 ")),1);
+asrt(count(RedBean_Plugin_Finder::where("wine"," @id > 100 OR 1 ")),1);
+asrt(count(RedBean_Plugin_Finder::where("wine",
 		  " 1 OR @grape = 'merlot' ")),1); //non-existant column
-asrt(count(Finder::where("wine",
+asrt(count(RedBean_Plugin_Finder::where("wine",
 		  " 1 OR @wine.grape = 'merlot' ")),1); //non-existant column
-asrt(count(Finder::where("wine",
+asrt(count(RedBean_Plugin_Finder::where("wine",
 		  " 1 OR @cork=1 OR @grape = 'merlot' ")),1); //2 non-existant column
-asrt(count(Finder::where("wine",
+asrt(count(RedBean_Plugin_Finder::where("wine",
 		  " 1 OR @cork=1 OR @wine.grape = 'merlot' ")),1); //2 non-existant column
-asrt(count(Finder::where("wine",
+asrt(count(RedBean_Plugin_Finder::where("wine",
 		  " 1 OR @bottle.cork=1 OR @wine.grape = 'merlot' ")),1); //2 non-existant column
 RedBean_Setup::getToolbox()->getRedBean()->freeze( TRUE );
-asrt(count(Finder::where("wine"," 1 OR 1 ")),1);
+asrt(count(RedBean_Plugin_Finder::where("wine"," 1 OR 1 ")),1);
 try {
-	Finder::where("wine"," 1 OR @grape = 'merlot' ");
+	RedBean_Plugin_Finder::where("wine"," 1 OR @grape = 'merlot' ");
 	fail();
 }
 catch(RedBean_Exception_SQL $e) {
 	pass();
 }
 try {
-	Finder::where("wine"," 1 OR @wine.grape = 'merlot' ");
+	RedBean_Plugin_Finder::where("wine"," 1 OR @wine.grape = 'merlot' ");
 	fail();
 }
 catch(RedBean_Exception_SQL $e) {
 	pass();
 }
 try {
-	Finder::where("wine"," 1 OR @cork=1 OR @wine.grape = 'merlot'  ");
+	RedBean_Plugin_Finder::where("wine"," 1 OR @cork=1 OR @wine.grape = 'merlot'  ");
 	fail();
 }
 catch(RedBean_Exception_SQL $e) {
 	pass();
 }
 try {
-	Finder::where("wine"," 1 OR @bottle.cork=1 OR @wine.grape = 'merlot'  ");
+	RedBean_Plugin_Finder::where("wine"," 1 OR @bottle.cork=1 OR @wine.grape = 'merlot'  ");
 	fail();
 }
 catch(RedBean_Exception_SQL $e) {
 	pass();
 }
 try {
-	Finder::where("wine"," 1 OR @a=1",array(),false,true);
+	RedBean_Plugin_Finder::where("wine"," 1 OR @a=1",array(),false,true);
 	pass();
 }
 catch(RedBean_Exception_SQL $e) {
 	fail();
 }
 RedBean_Setup::getToolbox()->getRedBean()->freeze( FALSE );
-asrt(Finder::parseGoldSQL(" @name ","wine",RedBean_Setup::getToolbox())," name ");
-asrt(Finder::parseGoldSQL(" @name @id ","wine",RedBean_Setup::getToolbox())," name id ");
-asrt(Finder::parseGoldSQL(" @name @id @wine.id ","wine",RedBean_Setup::getToolbox())," name id wine.id ");
-asrt(Finder::parseGoldSQL(" @name @id @wine.id @bla ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL ");
-asrt(Finder::parseGoldSQL(" @name @id @wine.id @bla @xxx ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL NULL ");
-asrt(Finder::parseGoldSQL(" @bla @xxx ","wine",RedBean_Setup::getToolbox())," NULL NULL ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name ","wine",RedBean_Setup::getToolbox())," name ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id ","wine",RedBean_Setup::getToolbox())," name id ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id @wine.id ","wine",RedBean_Setup::getToolbox())," name id wine.id ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id @wine.id @bla ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id @wine.id @bla @xxx ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL NULL ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @bla @xxx ","wine",RedBean_Setup::getToolbox())," NULL NULL ");
 
 
 
@@ -587,6 +560,37 @@ asrt(RedBean_Plugin_Constraint::addConstraint($cask, $cask2),true);
 asrt(count($a->related($cask, "cask")),1);
 $redbean->trash( $cask2 );
 asrt(count($a->related($cask, "cask")),0);
+//now in combination with prefixes
+$adapter->exec("DROP TABLE IF EXISTS xx_barrel_grapes");
+$adapter->exec("DROP TABLE IF EXISTS xx_grapes");
+$adapter->exec("DROP TABLE IF EXISTS xx_barrel");
+class TestFormatter implements RedBean_IBeanFormatter{
+	public function formatBeanTable($table) {return "xx_$table";}
+	public function formatBeanID( $table ) {return "id";}
+}
+$oldwriter = $writer;
+$oldredbean = $redbean;
+$writer = new RedBean_QueryWriter_SQLiteT( $adapter, $frozen );
+$writer->setBeanFormatter( new TestFormatter );
+$redbean = new RedBean_OODB( $writer );
+$t2 = new RedBean_ToolBox($redbean,$adapter,$writer);
+$a = new RedBean_AssociationManager($t2);
+$redbean = new RedBean_OODB( $writer );
+RedBean_Plugin_Constraint::setToolBox($t2);
+$b = $redbean->dispense("barrel");
+$g = $redbean->dispense("grapes");
+$g->type = "merlot";
+$b->texture = "wood";
+$a->associate($g, $b);
+asrt(RedBean_Plugin_Constraint::addConstraint($b, $g),true);
+asrt(RedBean_Plugin_Constraint::addConstraint($b, $g),true);
+asrt($redbean->count("barrel_grapes"),1);
+$redbean->trash($g);
+asrt($redbean->count("barrel_grapes"),0);
+//put things back in order for next tests...
+$a = new RedBean_AssociationManager($toolbox);
+$writer = $oldwriter;
+$redbean=$oldredbean;
 
 
 
@@ -750,7 +754,7 @@ asrt(count($books),3);
 
 
 testpack("Test Custom ID Field");
-class MyWriter extends RedBean_QueryWriter_SQLite {
+class MyWriter extends RedBean_QueryWriter_SQLiteT {
 	public function getIDField( $type ) {
 		return $type . "_id";
 	}
@@ -779,6 +783,7 @@ asrt($movies[$movieid]->name,"movie 1");
 asrt($movies[$movieid2]->name,"movie 2");
 $toolbox2 = new RedBean_ToolBox($redbean2, $adapter, $writer2);
 
+//$adapter->getDatabase()->setDebugMode(1);
 $a2 = new RedBean_AssociationManager($toolbox2);
 $a2->associate($movie1,$movie2);
 $movies = $a2->related($movie1, "movie");
@@ -791,6 +796,7 @@ $genre = $redbean2->dispense("genre");
 $genre->name="western";
 $a2->associate($movie,$genre);
 $movies = $a2->related($genre, "movie");
+//print_r($movies);
 asrt(count($movies),1);
 asrt((int)$movies[0],(int)$movieid);
 $a2->unassociate($movie,$genre);
@@ -920,12 +926,10 @@ asrt(count($a->related($pageEvenMore, "page")),1);
 asrt(count($a->related($pageOther, "page")),0);
 
 
-$stat = new RedBean_SimpleStat($toolbox);
 testpack("Test RedBean Finder Plugin*");
-asrt(count(Finder::where("page", " name LIKE '%more%' ")),3);
-asrt(count(Finder::where("page", " name LIKE :str ",array(":str"=>'%more%'))),3);
-asrt(count(Finder::where("page", " name LIKE :str ",array(":str"=>'%mxore%'))),0);
-asrt(count(Finder::where("page")),$stat->numberOf($redbean->dispense("page")));
+asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE '%more%' ")),3);
+asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE :str ",array(":str"=>'%more%'))),3);
+asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE :str ",array(":str"=>'%mxore%'))),0);
 
 testpack("Test Developer Interface API");
 $post = $redbean->dispense("post");
@@ -1018,10 +1022,6 @@ asrt(count($tm->children($subpage2)),1);
 asrt(intval($subpage1->parent_id),intval($id));
 
 
-testpack("TEST SimpleStat ");
-$stat = new RedBean_SimpleStat( $toolbox );
-asrt( $stat->numberOf($page), 16);
-
 //Section D Security Tests
 $hack = $redbean->dispense("hack");
 $redbean->store($hack);
@@ -1096,7 +1096,7 @@ try {
 }
 asrt(in_array("hack",$writer->getTables()),true);
 try {
-	Finder::where("::");
+	RedBean_Plugin_Finder::where("::");
 }catch(Exception $e) {
 	pass();
 }
@@ -1155,7 +1155,7 @@ $bean = $redbean->dispense("zero");
 $bean->zero = false;
 $bean->title = "bla";
 $redbean->store($bean);
-asrt( count(Finder::where("zero"," zero = '0' ")), 1 );
+asrt( count(RedBean_Plugin_Finder::where("zero"," zero = '0' ")), 1 );
 
 testpack("Support for Affinity for sorting order");
 
@@ -1170,7 +1170,7 @@ $project2->sequence = "12";
 $redbean->store($project);
 //print_r( $adapter->get("PRAGMA table_info('project')") ); exit;
 $redbean->store($project2);
-$projects = Finder::where("project"," 1 ORDER BY sequence ");
+$projects = RedBean_Plugin_Finder::where("project"," 1 ORDER BY sequence ");
 $firstProject = array_shift($projects);
 $secondProject = array_shift($projects);
 asrt((int)$firstProject->sequence,2);
@@ -1450,6 +1450,20 @@ asrt( getList( R::unrelated($salesman,"person"),"job" ), "painter" ) ;
 asrt( getList( R::unrelated($developer,"person"),"job" ), "painter" ) ;
 
 
+
+testpack("Test count and wipe");
+$page = R::dispense("page");
+$page->name = "ABC";
+R::store($page);
+$n1 = R::count("page");
+$page = R::dispense("page");
+$page->name = "DEF";
+R::store($page);
+$n2 = R::count("page");
+asrt($n1+1, $n2);
+R::wipe("page");
+asrt(R::count("page"),0);
+asrt(R::$redbean->count("page"),0);
 
 function setget($val) {
 global $pdo;

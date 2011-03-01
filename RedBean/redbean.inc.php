@@ -21,6 +21,7 @@ _______   ____   __| _/\_ |__   ____ _____    ____
  *					files for you.
  * @author			Gabor de Mooij
  * @license			BSD
+ * @replica:exclude
  *
  * (c) G.J.G.T. (Gabor) de Mooij
  * This source file is subject to the BSD/GPLv2 License that is bundled
@@ -83,7 +84,7 @@ require($dir."TreeManager.php");
 require($dir."LinkManager.php");
 require($dir."ExtAssociationManager.php");
 require($dir."Setup.php");
-require($dir."SimpleStat.php");
+
 
 //Load the default plugins
 require($dir."Plugin/ChangeLogger.php");
@@ -96,7 +97,7 @@ require($dir."Plugin/IOptimizer.php");
 require($dir."Plugin/Optimizer.php");
 require($dir."Plugin/Optimizer/Datetime.php");
 require($dir."Plugin/Optimizer/Shrink.php");
-
+require($dir."Plugin/BeanMachine.php");
 
 require($dir."QueryWriter/NullWriter.php");
 

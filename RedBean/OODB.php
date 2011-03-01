@@ -96,7 +96,7 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 		$idfield = $this->writer->getIDField($bean->getMeta("type"));
 		$bean->setMeta("sys.idfield",$idfield);
 		$bean->$idfield = 0;
-		$this->check( $bean );
+		if (!$this->isFrozen) $this->check( $bean );
 		$bean->setMeta("tainted",false);
 		$this->signal( "dispense", $bean );
 		return $bean;
@@ -168,7 +168,7 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 	 */
 	public function store( RedBean_OODBBean $bean ) {
 		$this->signal( "update", $bean );
-		$this->check($bean);
+		if (!$this->isFrozen) $this->check($bean);
 		//what table does it want
 		$table = $bean->getMeta("type");
 		$idfield = $this->writer->getIDField($table);
@@ -184,28 +184,41 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 		$insertcolumns = array();
 		$updatevalues = array();
 		foreach( $bean as $p=>$v ) {
-			if ($p==$idfield || $v instanceof RedBean_OODBBean) continue; 
-		  if (!$this->isFrozen) {
-			  //What kind of property are we dealing with?
-			  $typeno = $this->writer->scanType($v);
-			  //Is this property represented in the table?
-			  if (isset($columns[$p])) {
-				  //yes it is, does it still fit?
-				  $sqlt = $this->writer->code($columns[$p]);
-				  if ($typeno > $sqlt) {
-					  //no, we have to widen the database column type
-					  $this->writer->widenColumn( $table, $p, $typeno );
-				  }
-			  }
-			  else {
-				  //no it is not
-				  $this->writer->addColumn($table, $p, $typeno);
-			  }
-		  }
-		  //Okay, now we are sure that the property value will fit
-		  $insertvalues[] = $v;
-		  $insertcolumns[] = $p;
-		  $updatevalues[] = array( "property"=>$p, "value"=>$v );
+			if (($p!=$idfield) && ($v instanceof RedBean_OODBBean != true)) {
+				if (!$this->isFrozen) {
+					//Does the user want to specify the type?
+					if ($bean->getMeta("cast.$p",-1)!==-1) {
+						$cast = $bean->getMeta("cast.$p");
+						if ($cast=="string") {
+							$typeno = $this->writer->scanType("STRING");
+						}
+						else {
+							throw new RedBean_Exception("Invalid Cast");
+						}
+					}
+					else {
+						//What kind of property are we dealing with?
+						$typeno = $this->writer->scanType($v);
+					}
+					//Is this property represented in the table?
+					if (isset($columns[$p])) {
+						//yes it is, does it still fit?
+						$sqlt = $this->writer->code($columns[$p]);
+						if ($typeno > $sqlt) {
+							//no, we have to widen the database column type
+							$this->writer->widenColumn( $table, $p, $typeno );
+						}
+					}
+					else {
+						//no it is not
+						$this->writer->addColumn($table, $p, $typeno);
+					}
+				}
+				//Okay, now we are sure that the property value will fit
+				$insertvalues[] = $v;
+				$insertcolumns[] = $p;
+				$updatevalues[] = array( "property"=>$p, "value"=>$v );
+			}
 		}
 		if (!$this->isFrozen && ($uniques = $bean->getMeta("buildcommand.unique"))) {
 			foreach($uniques as $unique) {
@@ -249,8 +262,8 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 	 */
 	public function load($type, $id) {
 		$this->signal("before_open",array("type"=>$type,"id"=>$id));
-		$id = intval( $id );
-		if ($id < 0) throw new RedBean_Exception_Security("Id less than zero not allowed");
+		$tmpid = intval( $id );
+		if ($tmpid < 0) throw new RedBean_Exception_Security("Id less than zero not allowed");
 		$bean = $this->dispense( $type );
 		if ($this->stash && isset($this->stash[$id])) {
 			$row = $this->stash[$id];
@@ -294,7 +307,7 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 	public function trash( RedBean_OODBBean $bean ) {
 		$idfield = $this->writer->getIDField($bean->getMeta("type"));
 		$this->signal( "delete", $bean );
-		$this->check( $bean );
+		if (!$this->isFrozen) $this->check( $bean );
 		try {
 			$this->writer->deleteRecord( $bean->getMeta("type"), $bean->$idfield );
 		}catch(RedBean_Exception_SQL $e) {
@@ -363,6 +376,44 @@ class RedBean_OODB extends RedBean_Observable implements RedBean_ObjectDatabase 
 		$this->stash = NULL;
 		return $collection;
 	}
+
+	/**
+	 * Returns the number of beans we have in DB of a given type.
+	 * 
+	 * @param string $type type of bean we are looking for
+	 * 
+	 * @return integer $num number of beans found 
+	 */
+	public function count($type) {
+		try {
+			return (int) $this->writer->count($type);
+		}catch(RedBean_Exception_SQL $e) {
+			if (!$this->writer->sqlStateIn($e->getSQLState(),
+			array(RedBean_QueryWriter::C_SQLSTATE_NO_SUCH_TABLE)
+			)) throw $e;
+		}
+		return 0;
+	}
+
+	/**
+	 * Trash all beans of a given type.
+	 *
+	 * @param string $type type
+	 *
+	 * @return boolean $yesNo whether we actually did some work or not..
+	 */
+	public function wipe($type) {
+		try {
+			$this->writer->wipe($type);
+			return true;
+		}catch(RedBean_Exception_SQL $e) {
+			if (!$this->writer->sqlStateIn($e->getSQLState(),
+			array(RedBean_QueryWriter::C_SQLSTATE_NO_SUCH_TABLE)
+			)) throw $e;
+		}
+		return false;
+	}
+
 
 }
 

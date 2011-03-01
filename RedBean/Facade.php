@@ -15,7 +15,6 @@
  * with this source code in the file license.txt.
  *
  */
-class RObj { public function __call($f,$a){ return call_user_func_array("R::$f", $a); } }
 class R {
 
 	/**
@@ -87,7 +86,7 @@ class R {
 	 * @return string $version Version ID
 	 */
 	public static function getVersion() {
-		return "1.2.9.1";
+		return "1.3beta";
 	}
 
 	/**
@@ -98,22 +97,8 @@ class R {
 	 */
 	public static function setup( $dsn="sqlite:/tmp/red.db", $username=NULL, $password=NULL ) {
 		RedBean_Setup::kickstart( $dsn, $username, $password );
-		self::$toolbox = RedBean_Setup::getToolBox();
-		self::$writer = self::$toolbox->getWriter();
-		self::$adapter = self::$toolbox->getDatabaseAdapter();
-		self::$redbean = self::$toolbox->getRedBean();
-		self::$associationManager = new RedBean_AssociationManager( self::$toolbox );
-		self::$treeManager = new RedBean_TreeManager( self::$toolbox );
-		self::$linkManager = new RedBean_LinkManager( self::$toolbox );
-		self::$extAssocManager = new RedBean_ExtAssociationManager( self::$toolbox );
-		$helper = new RedBean_ModelHelper();
-		self::$redbean->addEventListener("update", $helper );
-		self::$redbean->addEventListener("open", $helper );
-		self::$redbean->addEventListener("delete", $helper );
-		self::$redbean->addEventListener("after_delete", $helper );
-		self::$redbean->addEventListener("after_update", $helper );
-		self::$redbean->addEventListener("dispense", $helper );
-		
+		$toolbox = RedBean_Setup::getToolBox();
+		self::configureFacadeWithToolbox($toolbox);
 	}
 
 
@@ -199,6 +184,21 @@ class R {
 	 */
 	public static function loadOrDispense( $type, $id = 0 ) {
 		return ($id ? R::load($type,(int)$id) : R::dispense($type));
+	}
+
+	/**
+	 * Convience method. Tries to find beans of a certain type,
+	 * if no beans are found, it dispenses a bean of that type.
+	 *
+	 * @param  string $type   type of bean you are looking for
+	 * @param  string $sql    SQL code for finding the bean
+	 * @param  array  $values parameters to bind to SQL
+	 *
+	 * @return array $beans Contains RedBean_OODBBean instances
+	 */
+	public static function findOrDispense( $type, $sql, $values ) {
+		$foundBeans = self::find($type,$sql,$values);
+		if (count($foundBeans)==0) return array(self::dispense($type)); else return $foundBeans;
 	}
 
 	/**
@@ -427,7 +427,7 @@ class R {
 	 * @return array $beans  beans
 	 */
 	public static function find( $type, $sql="1", $values=array() ) {
-		return Finder::where( $type, $sql, $values );
+		return RedBean_Plugin_Finder::where( $type, $sql, $values );
 	}
 
 
@@ -486,7 +486,7 @@ class R {
 	 * @return array $arrays arrays
 	 */
 	public static function findAndExport($type, $sql="1", $values=array()) {
-		$items = Finder::where( $type, $sql, $values );
+		$items = RedBean_Plugin_Finder::where( $type, $sql, $values );
 		$arr = array();
 		foreach($items as $key=>$item) {
 			$arr[$key]=$item->export();
@@ -511,6 +511,26 @@ class R {
 	public static function findOne( $type, $sql="1", $values=array()) {
 		$items = R::find($type,$sql,$values);
 		return reset($items);
+	}
+
+	/**
+	 * Finds a bean using a type and a where clause (SQL).
+	 * As with most Query tools in RedBean you can provide values to
+	 * be inserted in the SQL statement by populating the value
+	 * array parameter; you can either use the question mark notation
+	 * or the slot-notation (:keyname).
+	 * This variation returns the last bean only.
+	 *
+	 * @param string $type	 type
+	 * @param string $sql	 sql
+	 * @param array  $values values
+	 *
+	 * @return RedBean_OODBBean $bean
+	 */
+	public static function findLast( $type, $sql="1", $values=array() )
+	{
+		$items = R::find( $type, $sql, $values );
+		return end( $items );
 	}
 
 
@@ -771,17 +791,61 @@ class R {
 		}
 
 	}
-	
-	
+
+	/**
+	 * Wipes all beans of type $beanType.
+	 *
+	 * @param string $beanType type of bean you want to destroy entirely.
+	 */
+	public static function wipe( $beanType ) {
+		R::$redbean->wipe($beanType);
+	}
+
+	/**
+	 * Counts beans
+	 *
+	 * @param string $beanType type of bean
+	 *
+	 * @return integer $numOfBeans
+	 */
+
+	public static function count( $beanType ) {
+		return R::$redbean->count($beanType);
+	}
+
+	/**
+	 * Configures the facade, want to have a new Writer? A new Object Database or a new
+	 * Adapter and you want it on-the-fly? Use this method to hot-swap your facade with a new
+	 * toolbox.
+	 *
+	 * @static
+	 * @param RedBean_ToolBox $tb toolbox
+	 *
+	 * @return RedBean_ToolBox $tb old, rusty, previously used toolbox
+	 */
+	public static function configureFacadeWithToolbox( RedBean_ToolBox $tb ) {
+
+		$oldTools = self::$toolbox;
+
+		self::$toolbox = $tb;
+		self::$writer = self::$toolbox->getWriter();
+		self::$adapter = self::$toolbox->getDatabaseAdapter();
+		self::$redbean = self::$toolbox->getRedBean();
+		self::$associationManager = new RedBean_AssociationManager( self::$toolbox );
+		self::$treeManager = new RedBean_TreeManager( self::$toolbox );
+		self::$linkManager = new RedBean_LinkManager( self::$toolbox );
+		self::$extAssocManager = new RedBean_ExtAssociationManager( self::$toolbox );
+		$helper = new RedBean_ModelHelper();
+		self::$redbean->addEventListener("update", $helper );
+		self::$redbean->addEventListener("open", $helper );
+		self::$redbean->addEventListener("delete", $helper );
+		self::$redbean->addEventListener("after_delete", $helper );
+		self::$redbean->addEventListener("after_update", $helper );
+		self::$redbean->addEventListener("dispense", $helper );
+
+		return $oldTools;
+	}
 
 
-}
 
-//Helper functions
-function tbl($table) {
-	return R::$writer->getFormattedTableName($table);
-}
-
-function ID($id) {
-	return R::$writer->getIDField($table);
 }

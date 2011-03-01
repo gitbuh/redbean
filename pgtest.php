@@ -302,23 +302,7 @@ try {
 	$redbean->freeze(false);
 
 
-	testpack("UNIT TEST RedBean OODBBean: Meta Information");
-	$bean = new RedBean_OODBBean;
-	$bean->setMeta( "this.is.a.custom.metaproperty" , "yes" );
-	asrt($bean->getMeta("this.is.a.custom.metaproperty"),"yes");
-	$bean->setMeta( "test", array( "one" => 123 ));
-	asrt($bean->getMeta("test.one"),123);
-	$bean->setMeta( "arr", array(1,2) );
-	asrt(is_array($bean->getMeta("arr")),true);
-	asrt($bean->getMeta("nonexistant"),NULL);
-	asrt($bean->getMeta("nonexistant","abc"),"abc");
-	asrt($bean->getMeta("nonexistant.nested"),NULL);
-	asrt($bean->getMeta("nonexistant,nested","abc"),"abc");
-	$bean->setMeta("test.two","second");
-	asrt($bean->getMeta("test.two"),"second");
-	$bean->setMeta("another.little.property","yes");
-	asrt($bean->getMeta("another.little.property"),"yes");
-	asrt($bean->getMeta("test.two"),"second");
+
 
 
 	testpack("UNIT TEST RedBean OODBBean: import");
@@ -327,20 +311,7 @@ try {
 	asrt($bean->a, 1);
 	asrt($bean->b, 2);
 
-	testpack("UNIT TEST RedBean OODBBean: export");
-	$bean->setMeta("justametaproperty","hellothere");
-	$arr = $bean->export();
-	asrt(is_array($arr),true);
-	asrt(isset($arr["a"]),true);
-	asrt(isset($arr["b"]),true);
-	asrt($arr["a"],1);
-	asrt($arr["b"],2);
-	asrt(isset($arr["__info"]),false);
-	$arr = $bean->export( true );
-	asrt(isset($arr["__info"]),true);
-	asrt($arr["a"],1);
-	asrt($arr["b"],2);
-
+	
 //Test observer
 	testpack("UNIT TEST Observer Mechanism ");
 	$observable = new ObservableMock();
@@ -385,6 +356,9 @@ try {
 	if (in_array("logentry",$_tables)) $pdo->Execute("DROP TABLE logentry");
 	if (in_array("admin",$_tables)) $pdo->Execute("DROP TABLE admin");
 	if (in_array("wine",$_tables)) $pdo->Execute("DROP TABLE wine");
+	if (in_array("xx_barrel",$_tables)) $pdo->Execute("DROP TABLE xx_barrel CASCADE");
+	if (in_array("xx_grapes",$_tables)) $pdo->Execute("DROP TABLE xx_grapes CASCADE");
+	if (in_array("xx_barrel_grapes",$_tables)) $pdo->Execute("DROP TABLE xx_barrel_grapes CASCADE");
 	if (in_array("admin_logentry",$_tables)) $pdo->Execute("DROP TABLE admin_logentry"); 
 	$page = $redbean->dispense("page");
 
@@ -673,9 +647,9 @@ try {
 
 	testpack("Test RedBean Finder Plugin*");
 //$adapter->getDatabase()->setDebugMode(1);
-	asrt(count(Finder::where("page", " name LIKE '%more%' ")),3);
-	asrt(count(Finder::where("page", " name LIKE :str ",array(":str"=>'%more%'))),3);
-	asrt(count(Finder::where("page", " name LIKE :str ",array(":str"=>'%mxore%'))),0);
+	asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE '%more%' ")),3);
+	asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE :str ",array(":str"=>'%more%'))),3);
+	asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE :str ",array(":str"=>'%mxore%'))),0);
 	$bean = $redbean->dispense("wine");
 	$bean->name = "bla";
 	$redbean->store($bean);
@@ -687,69 +661,69 @@ try {
 	$redbean->store($bean);
 	$redbean->store($bean);
 	$redbean->store($bean);
-	Finder::where("wine", "id=5"); //  Finder:where call RedBean_OODB::convertToBeans
+	RedBean_Plugin_Finder::where("wine", "id=5"); //  Finder:where call RedBean_OODB::convertToBeans
 	$bean2 = $redbean->load("anotherbean", 5);
 	asrt($bean2->id,0);
 	testpack("Test Gold SQL");
-	asrt(count(Finder::where("wine"," id > 0 ")),1);
-	asrt(count(Finder::where("wine"," @id < 100 ")),1);
-	asrt(count(Finder::where("wine"," @id > 100 ")),0);
-	asrt(count(Finder::where("wine"," @id < 100 OR TRUE ")),1);
-	asrt(count(Finder::where("wine"," @id > 100 OR TRUE ")),1);
-	asrt(count(Finder::where("wine",
+	asrt(count(RedBean_Plugin_Finder::where("wine"," id > 0 ")),1);
+	asrt(count(RedBean_Plugin_Finder::where("wine"," @id < 100 ")),1);
+	asrt(count(RedBean_Plugin_Finder::where("wine"," @id > 100 ")),0);
+	asrt(count(RedBean_Plugin_Finder::where("wine"," @id < 100 OR TRUE ")),1);
+	asrt(count(RedBean_Plugin_Finder::where("wine"," @id > 100 OR TRUE ")),1);
+	asrt(count(RedBean_Plugin_Finder::where("wine",
 			  " TRUE OR @grape = 'merlot' ")),1); //non-existant column
-	asrt(count(Finder::where("wine",
+	asrt(count(RedBean_Plugin_Finder::where("wine",
 			  " TRUE OR @wine.grape = 'merlot' ")),1); //non-existant column
-	asrt(count(Finder::where("wine",
+	asrt(count(RedBean_Plugin_Finder::where("wine",
 			  " TRUE OR @cork=1 OR @grape = 'merlot' ")),1); //2 non-existant column
-	asrt(count(Finder::where("wine",
+	asrt(count(RedBean_Plugin_Finder::where("wine",
 			  " TRUE OR @cork=1 OR @wine.grape = 'merlot' ")),1); //2 non-existant column
-	asrt(count(Finder::where("wine",
+	asrt(count(RedBean_Plugin_Finder::where("wine",
 			  " TRUE OR @bottle.cork=1 OR @wine.grape = 'merlot' ")),1); //2 non-existant column
 	RedBean_Setup::getToolbox()->getRedBean()->freeze( TRUE );
-	asrt(count(Finder::where("wine"," TRUE OR TRUE ")),1);
+	asrt(count(RedBean_Plugin_Finder::where("wine"," TRUE OR TRUE ")),1);
 	try {
-		Finder::where("wine"," TRUE OR @grape = 'merlot' ");
+		RedBean_Plugin_Finder::where("wine"," TRUE OR @grape = 'merlot' ");
 		fail();
 	}
 	catch(RedBean_Exception_SQL $e) {
 		pass();
 	}
 	try {
-		Finder::where("wine"," TRUE OR @wine.grape = 'merlot' ");
+		RedBean_Plugin_Finder::where("wine"," TRUE OR @wine.grape = 'merlot' ");
 		fail();
 	}
 	catch(RedBean_Exception_SQL $e) {
 		pass();
 	}
 	try {
-		Finder::where("wine"," TRUE OR @cork=1 OR @wine.grape = 'merlot'  ");
+		RedBean_Plugin_Finder::where("wine"," TRUE OR @cork=1 OR @wine.grape = 'merlot'  ");
 		fail();
 	}
 	catch(RedBean_Exception_SQL $e) {
 		pass();
 	}
 	try {
-		Finder::where("wine"," TRUE OR @bottle.cork=1 OR @wine.grape = 'merlot'  ");
+		RedBean_Plugin_Finder::where("wine"," TRUE OR @bottle.cork=1 OR @wine.grape = 'merlot'  ");
 		fail();
 	}
 	catch(RedBean_Exception_SQL $e) {
 		pass();
 	}
 	try {
-		Finder::where("wine"," TRUE OR @a=1",array(),false,true);
+		RedBean_Plugin_Finder::where("wine"," TRUE OR @a=1",array(),false,true);
 		pass();
 	}
 	catch(RedBean_Exception_SQL $e) {
 		fail();
 	}
 	RedBean_Setup::getToolbox()->getRedBean()->freeze( FALSE );
-	asrt(Finder::parseGoldSQL(" @name ","wine",RedBean_Setup::getToolbox())," name ");
-	asrt(Finder::parseGoldSQL(" @name @id ","wine",RedBean_Setup::getToolbox())," name id ");
-	asrt(Finder::parseGoldSQL(" @name @id @wine.id ","wine",RedBean_Setup::getToolbox())," name id wine.id ");
-	asrt(Finder::parseGoldSQL(" @name @id @wine.id @bla ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL ");
-	asrt(Finder::parseGoldSQL(" @name @id @wine.id @bla @xxx ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL NULL ");
-	asrt(Finder::parseGoldSQL(" @bla @xxx ","wine",RedBean_Setup::getToolbox())," NULL NULL ");
+	asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name ","wine",RedBean_Setup::getToolbox())," name ");
+	asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id ","wine",RedBean_Setup::getToolbox())," name id ");
+	asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id @wine.id ","wine",RedBean_Setup::getToolbox())," name id wine.id ");
+	asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id @wine.id @bla ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL ");
+	asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id @wine.id @bla @xxx ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL NULL ");
+	asrt(RedBean_Plugin_Finder::parseGoldSQL(" @bla @xxx ","wine",RedBean_Setup::getToolbox())," NULL NULL ");
 
 
 
@@ -909,7 +883,10 @@ try {
 	}catch(Exception $e) {
 		die($e->getMessage());
 	}
+	
 	$adapter->exec("DROP TABLE IF EXISTS whisky CASCADE ");
+	
+
 
 //add cask 101 and whisky 12
 	$cask = $redbean->dispense("cask");
@@ -924,6 +901,39 @@ try {
 	asrt(count($a->related($cask, "cask")),1);
 	$redbean->trash( $cask2 );
 	asrt(count($a->related($cask, "cask")),0);
+//now in combination with prefixes
+
+class TestFormatter implements RedBean_IBeanFormatter{
+	public function formatBeanTable($table) {return "xx_$table";}
+	public function formatBeanID( $table ) {return "id";}
+}
+$oldwriter = $writer;
+$oldredbean = $redbean;
+$writer = new RedBean_QueryWriter_PostgreSQL( $adapter, false );
+$writer->setBeanFormatter( new TestFormatter );
+$redbean = new RedBean_OODB( $writer );
+$t2 = new RedBean_ToolBox($redbean,$adapter,$writer);
+$a = new RedBean_AssociationManager($t2);
+$redbean = new RedBean_OODB( $writer );
+RedBean_Plugin_Constraint::setToolBox($t2);
+$b = $redbean->dispense("barrel");
+$g = $redbean->dispense("grapes");
+$g->type = "merlot";
+$b->texture = "wood";
+$a->associate($g, $b);
+asrt(RedBean_Plugin_Constraint::addConstraint($b, $g),true);
+asrt(RedBean_Plugin_Constraint::addConstraint($b, $g),false);
+asrt($redbean->count("barrel_grapes"),1);
+$redbean->trash($g);
+asrt($redbean->count("barrel_grapes"),0);
+//put things back in order for next tests...
+$a = new RedBean_AssociationManager($toolbox);
+$writer = $oldwriter;
+$redbean=$oldredbean;
+
+
+
+
 
 
 
@@ -1181,6 +1191,22 @@ asrt( getList( R::unrelated($painter,"person"),"job" ), "developer,salesman" ) ;
 asrt( getList( R::unrelated($salesman,"person"),"job" ), "painter" ) ;
 asrt( getList( R::unrelated($developer,"person"),"job" ), "painter" ) ;
 
+
+
+testpack("Test count and wipe");
+$page = R::dispense("page");
+$page->name = "ABC";
+R::store($page);
+$n1 = R::count("page");
+$page = R::dispense("page");
+$page->name = "DEF";
+R::store($page);
+$n2 = R::count("page");
+asrt($n1+1, $n2);
+R::wipe("page");
+asrt(R::count("page"),0);
+asrt(R::$redbean->count("page"),0);
+
 function setget($val) {
 global $pdo;
 $bean = R::dispense("page");
@@ -1191,6 +1217,18 @@ $id = R::store($bean);
 $bean = R::load("page",$id);
 return $bean->prop;
 }
+
+testpack("param binding pgsql");
+$page = R::dispense("page");
+$page->name = "abc";
+$page->number = 2;
+R::store($page);
+R::exec("insert into page (name) values(:name) ", array(":name"=>"my name"));
+R::exec("insert into page (number) values(:one) ", array(":one"=>1));
+R::exec("insert into page (number) values(:one) ", array(":one"=>"1"));
+R::exec("insert into page (number) values(:one) ", array(":one"=>"1234"));
+R::exec("insert into page (number) values(:one) ", array(":one"=>"-21"));
+pass();
 
 //this module tests whether values we store are the same we get returned
 //PDO is a bit unpred. with this but using STRINGIFY attr this should work we test this here

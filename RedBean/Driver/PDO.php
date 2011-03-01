@@ -65,6 +65,14 @@ class RedBean_Driver_PDO implements RedBean_Driver {
 	 */
 	private $connectInfo = array();
 
+
+	/**
+	 * @var bool
+	 * Whether you want to use classic String Only binding -
+	 * backward compatibility.
+	 */
+	public $flagUseStrinOnlyBinding = false;
+
 	/**
 	 *
 	 * @var boolean
@@ -185,10 +193,29 @@ class RedBean_Driver_PDO implements RedBean_Driver {
 				$s = $this->pdo->prepare($sql);
 			}
 
-			$s->execute($aValues);
+			if ($this->flagUseStrinOnlyBinding) {
+				$s->execute($aValues);
+			}
+			else {
+				foreach($aValues as $key=>&$value) {
+					if (is_integer($key)) {
+						if (ctype_digit(strval($value))) { $s->bindParam($key+1,$value,PDO::PARAM_INT); }
+						else $s->bindParam($key+1,$value,PDO::PARAM_STR);
+					}
+					else {
+
+						if (ctype_digit(strval($value))) $s->bindParam($key,$value,PDO::PARAM_INT);
+						else $s->bindParam($key,$value,PDO::PARAM_STR);
+					}
+
+				}
+				$s->execute();
+			}
 			
 		  if ($s->columnCount()) {
 		    $this->rs = $s->fetchAll();
+		    
+		    
 	    }
 		  else {
 		    $this->rs = null;
@@ -327,7 +354,30 @@ class RedBean_Driver_PDO implements RedBean_Driver {
 			else {
 				$s = $this->pdo->prepare($sql);
 			}
-			$s->execute($aValues);
+			
+			if ($this->flagUseStrinOnlyBinding) {
+				$s->execute($aValues);
+			}
+			else {
+			
+				foreach($aValues as $key=>&$value) {
+
+					if (is_integer($key)) {
+						if (ctype_digit(strval($value))) $s->bindParam($key+1,$value,PDO::PARAM_INT);
+						else $s->bindParam($key+1,$value,PDO::PARAM_STR);
+					}
+					else {
+
+						if (ctype_digit(strval($value))) $s->bindParam($key,$value,PDO::PARAM_INT);
+						else $s->bindParam($key,$value,PDO::PARAM_STR);
+					}
+
+				}
+
+
+				$s->execute();
+			}
+
 			$this->affected_rows=$s->rowCount();
 			return $this->affected_rows;
 		}

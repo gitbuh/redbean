@@ -17,6 +17,8 @@
  * @author			Gabor de Mooij
  * @license			BSD
  */
+ 
+ 
 error_reporting(E_ALL | E_STRICT);
 $ini = parse_ini_file("test.ini", true);
 
@@ -121,12 +123,22 @@ class ObserverMock implements RedBean_Observer {
 	}
 }
 
+
+//Helper functions
+function tbl($table) {
+	return R::$writer->getFormattedTableName($table);
+}
+
+function ID($id) {
+	return R::$writer->getIDField($table);
+}
+
 $nullWriter = new RedBean_QueryWriter_NullWriter();
 $redbean = new RedBean_OODB( $nullWriter );
 $linker = new RedBean_LinkManager( $toolbox );
 
 testpack("TEST VERSIONING");
-asrt(R::getVersion(),"1.2.9.1");
+asrt(R::getVersion(),"1.3beta");
 
 //Section A: Config Testing
 testpack("CONFIG TEST");
@@ -209,6 +221,16 @@ try {
 }catch(RedBean_Exception_Security $e) {
 	pass();
 }
+
+testpack("TEST ARRAY INTERFACE");
+$bean = $redbean->dispense("testbean");
+$bean["property"] = 123;
+$bean["abc"] = "def";
+asrt($bean["property"],123);
+asrt($bean["abc"],"def");
+asrt($bean->abc,"def");
+asrt(isset($bean["abd"]),false);
+asrt(isset($bean["abc"]),true);
 
 //Test the Check() function (also indirectly using store())
 testpack("UNIT TEST RedBean OODB: Check");
@@ -412,10 +434,6 @@ testpack("UNIT TEST RedBean OODBBean: Meta Information");
 $bean = new RedBean_OODBBean;
 $bean->setMeta( "this.is.a.custom.metaproperty" , "yes" );
 asrt($bean->getMeta("this.is.a.custom.metaproperty"),"yes");
-$bean->setMeta( "test", array( "one" => 123 ));
-asrt($bean->getMeta("test.one"),123);
-$bean->setMeta( "arr", array(1,2) );
-asrt(is_array($bean->getMeta("arr")),true);
 asrt($bean->getMeta("nonexistant"),NULL);
 asrt($bean->getMeta("nonexistant","abc"),"abc");
 asrt($bean->getMeta("nonexistant.nested"),NULL);
@@ -464,7 +482,7 @@ asrt($arr["b"],2);
 $exportBean = $redbean->dispense("abean");
 $exportBean->setMeta("metaitem.bla",1);
 $exportedBean = $exportBean->export(true);
-asrt($exportedBean["__info"]["metaitem"]["bla"],1);
+asrt($exportedBean["__info"]["metaitem.bla"],1);
 asrt($exportedBean["__info"]["type"],"abean");
 
 //Test observer
@@ -487,8 +505,6 @@ $adapter = $toolbox->getDatabaseAdapter();
 $writer  = $toolbox->getWriter();
 $redbean = $toolbox->getRedBean();
 
-
-
 testpack("UNIT TEST Toolbox");
 asrt(($adapter instanceof RedBean_Adapter_DBAdapter),true);
 asrt(($writer instanceof RedBean_QueryWriter),true);
@@ -498,6 +514,7 @@ asrt(($redbean instanceof RedBean_OODB),true);
 
 
 $pdo = $adapter->getDatabase();
+
 $pdo->setDebugMode(0);
 
 $pdo->Execute("DROP SCHEMA IF EXISTS {$ini['mysql']['schema']}");
@@ -688,6 +705,10 @@ asrt(isset($page->id),true);
 asrt(($page->getMeta("type")),"page");
 asrt((int)$page->id,$id);
 
+//testpack("Test param binding");
+//$pages = $adapter->exec("select * from page where 1 LIMIT :n ", array(":n"=>1));
+//print_r($pages);
+//exit;
 
 
 testpack("Test RedBean OODB: Can we Update a Record? ");
@@ -794,11 +815,36 @@ $page = $redbean->load( "page", $id );
 asrt( $page->name, "new name" );
 asrt( $page->rating, $longtext );
 
+$numAsString = "0001";
+$page->numasstring = $numAsString;
+$redbean->store($page);
+$page = $redbean->load( "page", $id );
+asrt($page->numasstring,"1");
+$numAsString = "0001";
+$page->setMeta("cast.numasstring","string");
+$page->numasstring = $numAsString;
+$redbean->store($page);
+$page = $redbean->load( "page", $id );
+asrt($page->numasstring,"0001");
+
+
 $redbean->trash( $page );
 
-
-
 asrt( (int) $pdo->GetCell("SELECT count(*) FROM page"), 0 );
+
+testpack("Test RedBean Issue with converting large doubles");
+$largeDouble = 999999888889999922211111; //8.88889999922211e+17;
+$page = $redbean->dispense("page");
+$page->weight = $largeDouble;
+$id = $redbean->store($page);
+$cols = $writer->getColumns("page");
+asrt($cols["weight"],"double");
+$page = $redbean->load("page", $id);
+$page->name = "dont change the numbers!";
+$redbean->store($page);
+$page = $redbean->load("page", $id);
+$cols = $writer->getColumns("page");
+asrt($cols["weight"],"double");
 
 
 testpack("Test RedBean OODB: Batch Loader ");
@@ -1194,12 +1240,10 @@ asrt($querycounter->counter,4); //compare with normal batch without preloading
 asrt(intval($adapter->getCell("SELECT count(*) FROM __log")),7);
 asrt(count($logger->testingOnly_getStash()),0); //should be used up
 
-$stat = new RedBean_SimpleStat($toolbox);
 testpack("Test RedBean Finder Plugin*");
-asrt(count(Finder::where("page", " name LIKE '%more%' ")),3);
-asrt(count(Finder::where("page", " name LIKE :str ",array(":str"=>'%more%'))),3);
-asrt(count(Finder::where("page", " name LIKE :str ",array(":str"=>'%mxore%'))),0);
-asrt(count(Finder::where("page")),$stat->numberOf($redbean->dispense("page")));
+asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE '%more%' ")),3);
+asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE :str ",array(":str"=>'%more%'))),3);
+asrt(count(RedBean_Plugin_Finder::where("page", " name LIKE :str ",array(":str"=>'%mxore%'))),0);
 
 
 
@@ -1214,71 +1258,71 @@ $redbean->store($bean);
 $redbean->store($bean);
 $redbean->store($bean);
 $redbean->store($bean);
-Finder::where("wine", "id=5"); //  Finder:where call RedBean_OODB::convertToBeans
+RedBean_Plugin_Finder::where("wine", "id=5"); //  Finder:where call RedBean_OODB::convertToBeans
 $bean2 = $redbean->load("anotherbean", 5);
 asrt($bean2->id,0);
 
 
 testpack("Test Gold SQL");
-asrt(count(Finder::where("wine"," 1 OR 1 ")),1);
-asrt(count(Finder::where("wine"," @id < 100 ")),1);
-asrt(count(Finder::where("wine"," @id > 100 ")),0);
-asrt(count(Finder::where("wine"," @id < 100 OR 1 ")),1);
-asrt(count(Finder::where("wine"," @id > 100 OR 1 ")),1);
-asrt(count(Finder::where("wine",
+asrt(count(RedBean_Plugin_Finder::where("wine"," 1 OR 1 ")),1);
+asrt(count(RedBean_Plugin_Finder::where("wine"," @id < 100 ")),1);
+asrt(count(RedBean_Plugin_Finder::where("wine"," @id > 100 ")),0);
+asrt(count(RedBean_Plugin_Finder::where("wine"," @id < 100 OR 1 ")),1);
+asrt(count(RedBean_Plugin_Finder::where("wine"," @id > 100 OR 1 ")),1);
+asrt(count(RedBean_Plugin_Finder::where("wine",
 		  " 1 OR @grape = 'merlot' ")),1); //non-existant column
-asrt(count(Finder::where("wine",
+asrt(count(RedBean_Plugin_Finder::where("wine",
 		  " 1 OR @wine.grape = 'merlot' ")),1); //non-existant column
-asrt(count(Finder::where("wine",
+asrt(count(RedBean_Plugin_Finder::where("wine",
 		  " 1 OR @cork=1 OR @grape = 'merlot' ")),1); //2 non-existant column
-asrt(count(Finder::where("wine",
+asrt(count(RedBean_Plugin_Finder::where("wine",
 		  " 1 OR @cork=1 OR @wine.grape = 'merlot' ")),1); //2 non-existant column
-asrt(count(Finder::where("wine",
+asrt(count(RedBean_Plugin_Finder::where("wine",
 		  " 1 OR @bottle.cork=1 OR @wine.grape = 'merlot' ")),1); //2 non-existant column
 RedBean_Setup::getToolbox()->getRedBean()->freeze( TRUE );
-asrt(count(Finder::where("wine"," 1 OR 1 ")),1);
+asrt(count(RedBean_Plugin_Finder::where("wine"," 1 OR 1 ")),1);
 try {
-	Finder::where("wine"," 1 OR @grape = 'merlot' ");
+	RedBean_Plugin_Finder::where("wine"," 1 OR @grape = 'merlot' ");
 	fail();
 }
 catch(RedBean_Exception_SQL $e) {
 	pass();
 }
 try {
-	Finder::where("wine"," 1 OR @wine.grape = 'merlot' ");
+	RedBean_Plugin_Finder::where("wine"," 1 OR @wine.grape = 'merlot' ");
 	fail();
 }
 catch(RedBean_Exception_SQL $e) {
 	pass();
 }
 try {
-	Finder::where("wine"," 1 OR @cork=1 OR @wine.grape = 'merlot'  ");
+	RedBean_Plugin_Finder::where("wine"," 1 OR @cork=1 OR @wine.grape = 'merlot'  ");
 	fail();
 }
 catch(RedBean_Exception_SQL $e) {
 	pass();
 }
 try {
-	Finder::where("wine"," 1 OR @bottle.cork=1 OR @wine.grape = 'merlot'  ");
+	RedBean_Plugin_Finder::where("wine"," 1 OR @bottle.cork=1 OR @wine.grape = 'merlot'  ");
 	fail();
 }
 catch(RedBean_Exception_SQL $e) {
 	pass();
 }
 try {
-	Finder::where("wine"," 1 OR @a=1",array(),false,true);
+	RedBean_Plugin_Finder::where("wine"," 1 OR @a=1",array(),false,true);
 	pass();
 }
 catch(RedBean_Exception_SQL $e) {
 	fail();
 }
 RedBean_Setup::getToolbox()->getRedBean()->freeze( FALSE );
-asrt(Finder::parseGoldSQL(" @name ","wine",RedBean_Setup::getToolbox())," name ");
-asrt(Finder::parseGoldSQL(" @name @id ","wine",RedBean_Setup::getToolbox())," name id ");
-asrt(Finder::parseGoldSQL(" @name @id @wine.id ","wine",RedBean_Setup::getToolbox())," name id wine.id ");
-asrt(Finder::parseGoldSQL(" @name @id @wine.id @bla ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL ");
-asrt(Finder::parseGoldSQL(" @name @id @wine.id @bla @xxx ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL NULL ");
-asrt(Finder::parseGoldSQL(" @bla @xxx ","wine",RedBean_Setup::getToolbox())," NULL NULL ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name ","wine",RedBean_Setup::getToolbox())," name ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id ","wine",RedBean_Setup::getToolbox())," name id ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id @wine.id ","wine",RedBean_Setup::getToolbox())," name id wine.id ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id @wine.id @bla ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @name @id @wine.id @bla @xxx ","wine",RedBean_Setup::getToolbox())," name id wine.id NULL NULL ");
+asrt(RedBean_Plugin_Finder::parseGoldSQL(" @bla @xxx ","wine",RedBean_Setup::getToolbox())," NULL NULL ");
 
 
 testpack("Test RedBean Cache plugin");
@@ -1351,6 +1395,13 @@ $movie = $redbean->load("movie", $id);
 //did you store the new prop?
 asrt($movie->language,"EN");
 
+//wipe must clear cache
+$movie = $redbean3->load("movie", $id);
+asrt((int)$movie->id, (int)$id);
+$redbean3->wipe("movie");
+$movie = $redbean3->load("movie", $id);
+asrt((int)$movie->id, 0);
+
 testpack("Transactions");
 $adapter->startTransaction();
 pass();
@@ -1374,7 +1425,11 @@ $redbean->trash( $post );
 pass();
 
 
-testpack("Test Frozen ");
+testpack("Test Frozen");
+
+
+
+
 $redbean->freeze( true );
 $page = $redbean->dispense("page");
 $page->sections = 10;
@@ -1403,7 +1458,25 @@ try {
 }catch(RedBean_Exception_SQL $e) {
 	pass();
 }
+$logger = RedBean_Plugin_QueryLogger::getInstanceAndAttach( $adapter );
+//now log and make sure no 'describe SQL' happens
+$page = $redbean->dispense("page");
+$page->name = "just another page that has been frozen...";
+$id = $redbean->store($page);
+$page = $redbean->load("page", $id);
+$page->name = "just a frozen page...";
+$redbean->store($page);
+$page2 = $redbean->dispense("page");
+$page2->name = "an associated frozen page";
+$a->associate($page, $page2);
+$a->related($page, "page");
+$a->unassociate($page, $page2);
+$a->clearRelations($page,"page");
+$items = RedBean_Plugin_Finder::where("page", "1");
+$redbean->trash($page);
 $redbean->freeze( false );
+asrt(count($logger->grep("select"))>0,true);
+asrt(count($logger->grep("describe"))<1,true);
 
 
 
@@ -1690,14 +1763,13 @@ try {
 }catch(RedBean_Exception_SQL $e) {
 	fail();
 }
+
 $a = $adapter->get("show index from testtable");
+
 asrt(count($a),3);
 asrt($a[1]["Key_name"],"UQ_64b283449b9c396053fe1724b4c685a80fd1a54d");
 asrt($a[2]["Key_name"],"UQ_64b283449b9c396053fe1724b4c685a80fd1a54d");
 
-testpack("TEST SimpleStat ");
-$stat = new RedBean_SimpleStat( $toolbox );
-asrt( $stat->numberOf($page), 25);
 
 
 //Test constraints: cascaded delete
@@ -1751,6 +1823,7 @@ asrt(count($a->related($whisky2, "cask")),1);
 $redbean->trash($whisky2);
 asrt(count($a->related($whisky2, "cask")),0); //should be gone now!
 
+
 $pdo->Execute("DROP TABLE IF EXISTS cask_whisky");
 $pdo->Execute("DROP TABLE IF EXISTS cask");
 $pdo->Execute("DROP TABLE IF EXISTS whisky");
@@ -1770,6 +1843,54 @@ $redbean->trash( $cask2 );
 asrt(count($a->related($cask, "cask")),0);
 
 
+//now in combination with prefixes
+$pdo->Execute("DROP TABLE IF EXISTS xx_barrel_grapes");
+$pdo->Execute("DROP TABLE IF EXISTS xx_grapes");
+$pdo->Execute("DROP TABLE IF EXISTS xx_barrel");
+class TestFormatter implements RedBean_IBeanFormatter{
+	public function formatBeanTable($table) {return "xx_$table";}
+	public function formatBeanID( $table ) {return "id";}
+}
+$oldwriter = $writer;
+$oldredbean = $redbean;
+$writer = new RedBean_QueryWriter_MySQL( $adapter, false );
+$writer->setBeanFormatter( new TestFormatter );
+$redbean = new RedBean_OODB( $writer );
+$t2 = new RedBean_ToolBox($redbean,$adapter,$writer);
+$a = new RedBean_AssociationManager($t2);
+$redbean = new RedBean_OODB( $writer );
+RedBean_Plugin_Constraint::setToolBox($t2);
+$b = $redbean->dispense("barrel");
+$g = $redbean->dispense("grapes");
+$g->type = "merlot";
+$b->texture = "wood";
+$a->associate($g, $b);
+asrt(RedBean_Plugin_Constraint::addConstraint($b, $g),true);
+asrt(RedBean_Plugin_Constraint::addConstraint($b, $g),false);
+asrt($redbean->count("barrel_grapes"),1);
+$redbean->trash($g);
+asrt($redbean->count("barrel_grapes"),0);
+//$adapter->getDatabase()->setDebugMode(1);
+//prefixes and logger
+$p=$redbean->dispense("page");
+$p->name="abc";
+$id=$redbean->store($p);
+$p=$redbean->load("page",$id);
+$p->name="def";
+$id=$redbean->store($p);
+
+$p2=$redbean->dispense("page");
+$p2->name="abc2";
+$a->associate($p2,$p);
+
+$redbean->trash($p);
+$redbean->trash($p2);
+
+//put things back in order for next tests...
+$a = new RedBean_AssociationManager($toolbox);
+$writer = $oldwriter;
+$redbean=$oldredbean;
+
 
 //Zero issue (false should be stored as 0 not as '')
 testpack("Zero issue");
@@ -1778,7 +1899,7 @@ $bean = $redbean->dispense("zero");
 $bean->zero = false;
 $bean->title = "bla";
 $redbean->store($bean);
-asrt( count(Finder::where("zero"," zero = 0 ")), 1 );
+asrt( count(RedBean_Plugin_Finder::where("zero"," zero = 0 ")), 1 );
 
 //Section D Security Tests
 testpack("Test RedBean Security - bean interface ");
@@ -1852,7 +1973,7 @@ try {
 }
 asrt(in_array("hack",$adapter->getCol("show tables")),true);
 try {
-	Finder::where("::");
+	RedBean_Plugin_Finder::where("::");
 }catch(Exception $e) {
 	pass();
 }
@@ -2035,7 +2156,7 @@ $uow->addWork("all_save",function() use($uow) {
 })
 ;
 $uow->doWork("all_save");
-asrt(count( Finder::where("book","title LIKE '%unit%'") ),1);
+asrt(count( RedBean_Plugin_Finder::where("book","title LIKE '%unit%'") ),1);
 
 testpack("Facade");
 R::setup("sqlite:/tmp/teststore.txt"); //should work as well
@@ -2539,6 +2660,39 @@ asrt( getList( R::unrelated($painter,"person"),"job" ), "developer,salesman" ) ;
 asrt( getList( R::unrelated($salesman,"person"),"job" ), "painter" ) ;
 asrt( getList( R::unrelated($developer,"person"),"job" ), "painter" ) ;
 
+testpack("Test parameter binding");
+R::$adapter->getDatabase()->flagUseStrinOnlyBinding = TRUE;
+try{R::getAll("select * from job limit ? ", array(1)); fail(); }catch(Exception $e){ pass(); }
+try{R::getAll("select * from job limit :l ", array(":l"=>1)); fail(); }catch(Exception $e){ pass(); }
+try{R::exec("select * from job limit ? ", array(1)); fail(); }catch(Exception $e){ pass(); }
+try{R::exec("select * from job limit :l ", array(":l"=>1)); fail(); }catch(Exception $e){ pass(); }
+R::$adapter->getDatabase()->flagUseStrinOnlyBinding = FALSE;
+try{R::getAll("select * from job limit ? ", array(1)); pass(); }catch(Exception $e){ print_r($e); fail(); }
+try{R::getAll("select * from job limit :l ", array(":l"=>1)); pass(); }catch(Exception $e){ fail(); }
+try{R::exec("select * from job limit ? ", array(1)); pass(); }catch(Exception $e){ fail(); }
+try{R::exec("select * from job limit :l ", array(":l"=>1)); pass(); }catch(Exception $e){ fail(); }
+
+testpack("Test findOrDispense");
+$person = R::findOrDispense("person", " job = ? ", array("developer"));
+asrt((count($person)>0), true);
+$person = R::findOrDispense("person", " job = ? ", array("musician"));
+asrt((count($person)>0), true);
+$musician = array_pop($person);
+asrt(intval($musician->id),0);
+
+testpack("Test count and wipe");
+$page = R::dispense("page");
+$page->name = "ABC";
+R::store($page);
+$n1 = R::count("page");
+$page = R::dispense("page");
+$page->name = "DEF";
+R::store($page);
+$n2 = R::count("page");
+asrt($n1+1, $n2);
+R::wipe("page");
+asrt(R::count("page"),0);
+asrt(R::$redbean->count("page"),0);
 
 
 function setget($val) {
@@ -2551,6 +2705,9 @@ $id = R::store($bean);
 $bean = R::load("page",$id);
 return $bean->prop;
 }
+
+
+
 
 //this module tests whether values we store are the same we get returned
 //PDO is a bit unpred. with this but using STRINGIFY attr this should work we test this here
@@ -2565,8 +2722,9 @@ asrt(setget("2147483647"),"2147483647");
 asrt(setget(2147483647),"2147483647");
 asrt(setget(-2147483647),"-2147483647");
 asrt(setget("-2147483647"),"-2147483647");
-asrt(setget("2147483647123456"),"2.14748364712346e+15");
-asrt(setget(2147483647123456),"2.14748364712e+15");
+//Architecture dependent... only test this if you are sure what arch 
+//asrt(setget("2147483647123456"),"2.14748364712346e+15");
+//asrt(setget(2147483647123456),"2.14748364712e+15");
 asrt(setget("a"),"a");
 asrt(setget("."),".");
 asrt(setget("\""),"\"");
@@ -2577,12 +2735,6 @@ asrt(setget("true"),"true");
 asrt(setget("false"),"false");
 asrt(setget("null"),"null");
 asrt(setget("NULL"),"NULL");
-
-
-testpack("non-static invocations");
-$r =  R::getInstance();
-asrt( getList( $r->unrelated($developer,"person"),"job" ), "painter" ) ;
-
 
 printtext("\nALL TESTS PASSED. REDBEAN SHOULD WORK FINE.\n");
 

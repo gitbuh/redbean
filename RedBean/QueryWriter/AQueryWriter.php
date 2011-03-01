@@ -397,4 +397,29 @@ abstract class RedBean_QueryWriter_AQueryWriter {
 		return $sqlSnippet;
 	}
 
+	
+	/**
+	 * Truncates a table
+	 *
+	 * @param string $table
+	 */
+	public function wipe($table) {
+		$table = $this->safeTable($table);
+		$sql = "TRUNCATE $table ";
+		$this->adapter->exec($sql);
+	}
+
+	/**
+	 * Counts rows in a table.
+	 *
+	 * @param string $beanType
+	 *
+	 * @return integer $numRowsFound
+	 */
+	public function count($beanType) {
+		$table = $this->safeTable($beanType);
+		$sql = "SELECT count(*) FROM $table ";
+		return (int) $this->adapter->getCell($sql);
+	}
+
 }
