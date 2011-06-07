@@ -190,7 +190,8 @@ class RedBean_OODBBean implements IteratorAggregate, ArrayAccess {
   
   protected function navigateLink ($property) {
     $pl=strlen($property);
-	  if (strrpos($property, '_id')===$pl-3) return null;
+    if (strrpos($property, '_id')===$pl-3) return null;
+    if (!$this->toolbox) return null;
     $cols = $this->toolbox->getWriter()->getColumns($this->getMeta("type"));
     foreach ($cols as $col=>$sqltype) {
       $cl=strlen($col);
